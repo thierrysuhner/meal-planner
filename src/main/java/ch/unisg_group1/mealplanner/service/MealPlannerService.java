@@ -18,6 +18,19 @@ public class MealPlannerService {
         this.mealRepo = mealRepo;
     }
 
+    // Recipe CRUD
+    public List<Recipe> getAllRecipes() {
+        return recipeRepo.findAll();
+    }
+
+    public Recipe saveRecipe(Recipe recipe) {
+        return recipeRepo.save(recipe);
+    }
+
+    public void deleteRecipe(Long recipeId) {
+        recipeRepo.deleteById(recipeId);
+    }
+
     // Calculate calories per day
     public int calculateCaloriesForDay(LocalDate date) {
         return mealRepo.findByDate(date).stream()
