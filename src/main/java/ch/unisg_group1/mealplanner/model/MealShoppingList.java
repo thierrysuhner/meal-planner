@@ -8,7 +8,7 @@ import java.util.List;
 @Getter @Setter @NoArgsConstructor
 public class MealShoppingList {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
     @OneToMany(cascade = CascadeType.ALL)

@@ -8,7 +8,7 @@ import java.util.List;
 @Getter @Setter @NoArgsConstructor
 public class Recipe {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
@@ -16,6 +16,6 @@ public class Recipe {
     private int portions;
     private int calories;
 
-    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Ingredient> ingredients;
 }

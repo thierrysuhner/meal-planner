@@ -3,6 +3,7 @@ package ch.unisg_group1.mealplanner.service;
 import ch.unisg_group1.mealplanner.model.*;
 import ch.unisg_group1.mealplanner.persistence.MealRepository;
 import ch.unisg_group1.mealplanner.persistence.RecipeRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -62,5 +63,12 @@ public class MealPlannerService {
     public List<Recipe> suggestRecipes(Set<String> availableIngredients) {
         return recipeRepo.findAll().stream().filter(r -> r.getIngredients().stream()
                 .allMatch(i -> availableIngredients.contains(i.getName()))).toList();
+    }
+
+    @Transactional
+    public Recipe fetchRecipeWithIngredients(Long id) {
+        Recipe r = recipeRepo.findById(id).orElseThrow();
+        r.getIngredients().size(); // Trigger für das Laden der Liste
+        return r;
     }
 }

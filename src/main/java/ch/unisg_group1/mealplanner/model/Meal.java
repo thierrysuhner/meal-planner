@@ -8,7 +8,7 @@ import java.time.LocalDate;
 @Getter @Setter @NoArgsConstructor
 public class Meal {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
     private LocalDate date;

@@ -7,7 +7,7 @@ import lombok.*;
 @Getter @Setter @NoArgsConstructor
 public class ShoppingListItem {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
     private String name;
