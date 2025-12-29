@@ -80,6 +80,8 @@ public class MealPlannerService {
 
     @Transactional
     public void generateShoppingListFromMeals(LocalDate start, LocalDate end) {
+        mealShoppingListRepo.deleteAll();
+
         // 1. Alle Meals im Zeitraum laden
         List<Meal> meals = mealRepo.findByStartTimeBetween(start.atStartOfDay(), end.atTime(23, 59));
 
@@ -131,7 +133,27 @@ public class MealPlannerService {
     }
 
     public List<ShoppingListItem> getAllShoppingListItems() {
-        return shoppingListRepo.findAll();
+        List<ShoppingListItem> allItems = shoppingListRepo.findAll();
+
+        // Aggregation per Stream: Gruppieren nach Name+Einheit und Mengen summieren
+        Map<String, ShoppingListItem> summary = allItems.stream()
+                .collect(Collectors.toMap(
+                        item -> item.getName().toLowerCase() + "-" + item.getUnit().toLowerCase(),
+                        item -> {
+                            // Kopie erstellen, um die Original-Objekte in der DB nicht zu verändern
+                            ShoppingListItem copy = new ShoppingListItem();
+                            copy.setName(item.getName());
+                            copy.setUnit(item.getUnit());
+                            copy.setTotalAmount(item.getTotalAmount());
+                            return copy;
+                        },
+                        (existing, replacement) -> {
+                            existing.setTotalAmount(existing.getTotalAmount() + replacement.getTotalAmount());
+                            return existing;
+                        }
+                ));
+
+        return new ArrayList<>(summary.values());
     }
 
     public void deleteShoppingListItem(ShoppingListItem item) {
@@ -144,12 +166,15 @@ public class MealPlannerService {
 
     @Transactional
     public void clearShoppingList() {
+        mealShoppingListRepo.deleteAll();
+
+        // Safety
         shoppingListRepo.deleteAll();
     }
 
     public List<String> getAllAvailableIngredientNames() {
         return ingredientRepo.findAll().stream()
-                .map(i -> i.getName().toLowerCase())
+                .map(Ingredient::getName)
                 .distinct()
                 .sorted()
                 .toList();
@@ -158,10 +183,17 @@ public class MealPlannerService {
     public List<Recipe> findRecipesMatchingIngredients(Set<String> myIngredients) {
         if (myIngredients.isEmpty()) return Collections.emptyList();
 
-        List<Recipe> allRecipes = recipeRepo.findAll();
-        String myIngredientsStr = myIngredients.toString().toLowerCase();
+        // 1. Alle Suchbegriffe in Kleinschreibung umwandeln für den Vergleich
+        Set<String> searchSet = myIngredients.stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
 
-        return allRecipes.stream().filter(recipe -> recipe.getIngredients().stream()
-                .anyMatch(ing -> myIngredients.contains(ing.getName().toLowerCase()))).toList();
+        List<Recipe> allRecipes = recipeRepo.findAll();
+
+        // 2. Filtern
+        return allRecipes.stream().filter(recipe ->
+                recipe.getIngredients().stream()
+                        .anyMatch(ing -> searchSet.contains(ing.getName().toLowerCase()))
+        ).toList();
     }
 }

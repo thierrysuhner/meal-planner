@@ -2,6 +2,7 @@ package ch.unisg_group1.mealplanner.controller;
 
 import ch.unisg_group1.mealplanner.model.ShoppingListItem;
 import ch.unisg_group1.mealplanner.service.MealPlannerService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -18,11 +19,9 @@ public class ShoppingListController {
 
     // Trigger the generation for a period
     @PostMapping("/generate")
-    public void generate(@RequestParam String start, @RequestParam String end) {
-        service.generateShoppingListFromMeals(
-                LocalDate.parse(start),
-                LocalDate.parse(end)
-        );
+    public void generate(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
+        service.generateShoppingListFromMeals(start,end);
     }
 
     @GetMapping("/items")

@@ -1,5 +1,6 @@
 package ch.unisg_group1.mealplanner.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,5 +17,6 @@ public class Ingredient {
     private int calories;
 
     @ManyToOne
+    @JsonBackReference
     private Recipe recipe;
 }

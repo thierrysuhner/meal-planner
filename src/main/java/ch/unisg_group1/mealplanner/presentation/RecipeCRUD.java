@@ -114,7 +114,7 @@ public class RecipeCRUD extends VerticalLayout {
             layout.setSpacing(false);
 
             if (missing.isEmpty()) {
-                Span allSet = new Span("Alles vorhanden! 🎉");
+                Span allSet = new Span("Alles vorhanden!");
                 allSet.getElement().getStyle().set("color", "var(--lumo-success-text-color)");
                 layout.add(allSet);
             } else {
@@ -240,6 +240,8 @@ public class RecipeCRUD extends VerticalLayout {
                     newList.add(i);
                 }
             }
+
+            // TODO: Kalorienberechnung in service auslagern
             totalCalories /= portions.getValue();
             recipeToUpdate.setCalories(totalCalories); // Gesamtsumme im Rezept speichern
             recipeToUpdate.getIngredients().clear();

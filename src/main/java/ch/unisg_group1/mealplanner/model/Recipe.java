@@ -1,5 +1,6 @@
 package ch.unisg_group1.mealplanner.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.List;
@@ -17,5 +18,6 @@ public class Recipe {
     private int calories;
 
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JsonManagedReference
     private List<Ingredient> ingredients;
 }
