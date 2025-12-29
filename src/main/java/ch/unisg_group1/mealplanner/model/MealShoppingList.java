@@ -9,7 +9,7 @@ import java.util.List;
 public class MealShoppingList {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Long id;
 
     @OneToMany(cascade = CascadeType.ALL)
     private List<ShoppingListItem> items;

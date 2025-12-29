@@ -31,6 +31,11 @@ public class RecipeController {
 
     @PostMapping("/suggest")
     public List<Recipe> suggest(@RequestBody Set<String> ingredients) {
-        return service.suggestRecipes(ingredients);
+        return service.findRecipesMatchingIngredients(ingredients);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        recipeRepo.deleteById(id);
     }
 }

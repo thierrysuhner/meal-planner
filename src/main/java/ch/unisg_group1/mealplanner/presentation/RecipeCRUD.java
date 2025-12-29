@@ -6,9 +6,14 @@ import ch.unisg_group1.mealplanner.service.MealPlannerService;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Hr;
+import com.vaadin.flow.component.html.Section;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -22,6 +27,8 @@ import org.vaadin.crudui.crud.impl.GridCrud;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Route(value = "recipes", layout = MainView.class)
 public class RecipeCRUD extends VerticalLayout {
@@ -61,6 +68,67 @@ public class RecipeCRUD extends VerticalLayout {
 
         add(new H3("Recipes"), crud, editorContainer);
         setSizeFull();
+
+        Hr divider = new Hr();
+        add(divider);
+
+        Section recipeFinderSection = new Section();
+        recipeFinderSection.add(new H3("Rezept-Finder (Was habe ich da?)"));
+
+        // 1. Eingabe der vorhandenen Zutaten
+        MultiSelectComboBox<String> inventoryPicker = new MultiSelectComboBox<>("Meine Zutaten");
+        inventoryPicker.setItems(service.getAllAvailableIngredientNames());
+        inventoryPicker.setPlaceholder("Zutaten auswählen...");
+        inventoryPicker.setWidthFull();
+
+        Grid<Recipe> resultGrid = new Grid<>(Recipe.class, false);
+        resultGrid.addColumn(Recipe::getName).setHeader("Rezept");
+        resultGrid.addColumn(r -> r.getCalories() + " kcal").setHeader("Kalorien");
+
+        // 2. Suche triggern
+        inventoryPicker.addValueChangeListener(e -> {
+            List<Recipe> matches = service.findRecipesMatchingIngredients(e.getValue());
+            resultGrid.setItems(matches);
+        });
+
+        // Die Spalte für fehlende Zutaten
+        resultGrid.addComponentColumn(recipe -> {
+            // 1. Berechne die Liste der fehlenden Zutaten
+            Set<String> ownedLower = inventoryPicker.getValue().stream()
+                    .map(String::toLowerCase)
+                    .collect(Collectors.toSet());
+
+            List<Ingredient> missing = recipe.getIngredients().stream()
+                    .filter(ing -> !ownedLower.contains(ing.getName().toLowerCase()))
+                    .toList();
+
+            // 2. Erstelle den Text: "Zutat (Menge Unit), Zutat2 (...)"
+            String missingText = missing.stream()
+                    .map(ing -> String.format("%s (%.1f %s)",
+                            ing.getName(), ing.getAmount(), ing.getUnit()))
+                    .collect(Collectors.joining(", "));
+
+            // 3. UI Komponenten zusammenstellen
+            VerticalLayout layout = new VerticalLayout();
+            layout.setPadding(false);
+            layout.setSpacing(false);
+
+            if (missing.isEmpty()) {
+                Span allSet = new Span("Alles vorhanden! 🎉");
+                allSet.getElement().getStyle().set("color", "var(--lumo-success-text-color)");
+                layout.add(allSet);
+            } else {
+                Span missingSpan = new Span("Fehlt: " + missingText);
+                missingSpan.getElement().getStyle().set("font-size", "var(--lumo-font-size-s)");
+                missingSpan.getElement().getStyle().set("color", "var(--lumo-error-text-color)");
+                layout.add(missingSpan);
+            }
+
+            return layout;
+        }).setHeader("Fehlende Zutaten & Aktion").setFlexGrow(2); // Mehr Platz für diese Spalte
+
+        resultGrid.addThemeVariants(GridVariant.LUMO_WRAP_CELL_CONTENT);
+        add(recipeFinderSection, inventoryPicker, resultGrid);
     }
 
     private void setupEditorView() {
@@ -132,8 +200,10 @@ public class RecipeCRUD extends VerticalLayout {
         if (currentRecipe == null || currentRecipe.getId() == null) {
             Notification.show("Please first create a recipe and then select it!");
             return;
+        } else if (portions.getValue() <= 0) { // Check if portions bigger than 0
+            Notification.show("Portions have to be greater than 0");
+            return;
         }
-
         try {
             // SCHRITT 1: Hol dir die ID
             Long id = currentRecipe.getId();
@@ -150,6 +220,12 @@ public class RecipeCRUD extends VerticalLayout {
 
             for (Component component : ingredientsLayout.getChildren().toList()) {
                 if (component instanceof HorizontalLayout row) {
+                    if (((TextField) row.getComponentAt(0)).getValue() == null ||
+                        ((NumberField) row.getComponentAt(1)).getValue() == null ||
+                        ((TextField) row.getComponentAt(2)).getValue().isEmpty()) {
+                        Notification.show("Please fill in at least Name, Amount and Unit of an ingredient.");
+                        return;
+                    }
                     Ingredient i = new Ingredient();
                     i.setName(((TextField) row.getComponentAt(0)).getValue());
                     i.setAmount(((NumberField) row.getComponentAt(1)).getValue());

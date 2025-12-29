@@ -14,21 +14,21 @@ public class ShoppingListCRUDListener implements CrudListener<ShoppingListItem> 
 
     @Override
     public java.util.List<ShoppingListItem> findAll() {
-        return java.util.Collections.emptyList(); // default empty, will populate via generateBtn
+        return service.getAllShoppingListItems();
     }
 
     @Override
     public ShoppingListItem add(ShoppingListItem item) {
-        return item; // No add
+        return service.saveShoppingListItem(item);
     }
 
     @Override
     public ShoppingListItem update(ShoppingListItem item) {
-        return item; // Optionally persist "checked" status
+        return service.saveShoppingListItem(item);
     }
 
     @Override
     public void delete(ShoppingListItem item) {
-        // optionally allow deletion
+        service.deleteShoppingListItem(item);
     }
 }

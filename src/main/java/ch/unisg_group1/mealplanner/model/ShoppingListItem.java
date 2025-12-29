@@ -8,10 +8,9 @@ import lombok.*;
 public class ShoppingListItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Long id;
 
     private String name;
     private double totalAmount;
     private String unit;
-    private boolean checked;
 }

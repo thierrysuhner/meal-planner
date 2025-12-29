@@ -1,22 +1,29 @@
 package ch.unisg_group1.mealplanner.service;
 
 import ch.unisg_group1.mealplanner.model.*;
-import ch.unisg_group1.mealplanner.persistence.MealRepository;
-import ch.unisg_group1.mealplanner.persistence.RecipeRepository;
+import ch.unisg_group1.mealplanner.persistence.*;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class MealPlannerService {
     private final RecipeRepository recipeRepo;
     private final MealRepository mealRepo;
+    private final ShoppingListItemRepository shoppingListRepo;
+    private final IngredientRepository ingredientRepo;
+    private final MealShoppingListRepository mealShoppingListRepo;
 
-    public MealPlannerService(RecipeRepository recipeRepo, MealRepository mealRepo) {
+    public MealPlannerService(RecipeRepository recipeRepo, MealRepository mealRepo, ShoppingListItemRepository shoppingListRepo, IngredientRepository ingredientRepo, MealShoppingListRepository mealShoppingListRepo) {
         this.recipeRepo = recipeRepo;
         this.mealRepo = mealRepo;
+        this.shoppingListRepo = shoppingListRepo;
+        this.ingredientRepo = ingredientRepo;
+        this.mealShoppingListRepo = mealShoppingListRepo;
     }
 
     // Recipe CRUD
@@ -32,43 +39,129 @@ public class MealPlannerService {
         recipeRepo.deleteById(recipeId);
     }
 
-    // Calculate calories per day
-    public int calculateCaloriesForDay(LocalDate date) {
-        return mealRepo.findByDate(date).stream()
-                .mapToInt(e -> e.getRecipe().getCalories() * e.getPersons()).sum();
-    }
-
-    // Generate shopping list for a meal
-    public MealShoppingList generateMealShoppingList(Meal meal) {
-        Map<String, ShoppingListItem> aggregated = new HashMap<>();
-
-        for (Ingredient i : meal.getRecipe().getIngredients()) {
-            double scaledAmount = i.getAmount() * meal.getPersons() / meal.getRecipe().getPortions();
-
-            aggregated.computeIfAbsent(i.getName(), name -> {
-                ShoppingListItem item = new ShoppingListItem();
-                item.setName(name);
-                item.setUnit(i.getUnit());
-                item.setTotalAmount(0);
-                return item;
-            }).setTotalAmount(aggregated.get(i.getName()).getTotalAmount() + scaledAmount);
-        }
-
-        MealShoppingList list = new MealShoppingList();
-        list.setItems(new ArrayList<>(aggregated.values()));
-        return list;
-    }
-
-    // Suggest recipes based on available ingredients
-    public List<Recipe> suggestRecipes(Set<String> availableIngredients) {
-        return recipeRepo.findAll().stream().filter(r -> r.getIngredients().stream()
-                .allMatch(i -> availableIngredients.contains(i.getName()))).toList();
-    }
-
     @Transactional
     public Recipe fetchRecipeWithIngredients(Long id) {
         Recipe r = recipeRepo.findById(id).orElseThrow();
         r.getIngredients().size(); // Trigger für das Laden der Liste
         return r;
+    }
+
+    public List<Meal> findMealsInRange(LocalDateTime start, LocalDateTime end) {
+        return mealRepo.findByStartTimeBetween(start, end);
+    }
+
+    public int calculateCaloriesForDay(LocalDate localDate) {
+        // 1. Alle Meals für den spezifischen Tag holen
+        List<Meal> meals = findMealsInRange(localDate.atStartOfDay(), localDate.atTime(23, 59, 59));
+
+        // 2. Summe berechnen: (Summe Kalorien der Rezepte) * Personen pro Meal
+        return meals.stream()
+                .mapToInt(meal -> meal.getRecipes().stream()
+                        .mapToInt(Recipe::getCalories)
+                        .sum())
+                .sum();
+    }
+
+    public Meal saveMeal(Meal meal) {
+        return mealRepo.save(meal);
+    }
+
+    public void deleteMeal(Meal meal) {
+        mealRepo.delete(meal);
+    }
+
+    public void deleteMealById(long id) {
+        mealRepo.deleteById(id);
+    }
+
+    public Optional<Meal> findById(Long id) {
+        return mealRepo.findById(id);
+    }
+
+    @Transactional
+    public void generateShoppingListFromMeals(LocalDate start, LocalDate end) {
+        // 1. Alle Meals im Zeitraum laden
+        List<Meal> meals = mealRepo.findByStartTimeBetween(start.atStartOfDay(), end.atTime(23, 59));
+
+        if (meals.isEmpty()) {
+            return; // Nichts zu tun
+        }
+
+        // Map zum Aggregieren der Zutaten für DIESEN spezifischen Lauf
+        Map<String, ShoppingListItem> aggregatedItems = new HashMap<>();
+
+        for (Meal meal : meals) {
+            int mealPersons = meal.getPersons();
+
+            for (Recipe recipe : meal.getRecipes()) {
+                double recipePortions = recipe.getPortions();
+                for (Ingredient ing : recipe.getIngredients()) {
+                    // Menge berechnen
+                    double adjustedAmount = (ing.getAmount() / recipePortions) * mealPersons;
+
+                    // Aufrunden bei Stückzahlen
+                    if ("pcs".equalsIgnoreCase(ing.getUnit())) {
+                        adjustedAmount = Math.ceil(adjustedAmount);
+                    }
+
+                    String key = ing.getName().toLowerCase() + "-" + ing.getUnit();
+
+                    if (aggregatedItems.containsKey(key)) {
+                        ShoppingListItem existing = aggregatedItems.get(key);
+                        existing.setTotalAmount(existing.getTotalAmount() + adjustedAmount);
+                    } else {
+                        ShoppingListItem newItem = new ShoppingListItem();
+                        newItem.setName(ing.getName());
+                        newItem.setTotalAmount(adjustedAmount);
+                        newItem.setUnit(ing.getUnit());
+                        aggregatedItems.put(key, newItem);
+                    }
+                }
+            }
+        }
+
+        // 2. Neue MealShoppingList erstellen und mit den Items verknüpfen
+        MealShoppingList mealList = new MealShoppingList();
+        // Wir wandeln die Map-Werte in eine ArrayList um
+        mealList.setItems(new ArrayList<>(aggregatedItems.values()));
+
+        // 3. Speichern
+        // Da CascadeType.ALL gesetzt ist, werden die ShoppingListItems automatisch mitgespeichert
+        mealShoppingListRepo.save(mealList);
+    }
+
+    public List<ShoppingListItem> getAllShoppingListItems() {
+        return shoppingListRepo.findAll();
+    }
+
+    public void deleteShoppingListItem(ShoppingListItem item) {
+        shoppingListRepo.delete(item);
+    }
+
+    public ShoppingListItem saveShoppingListItem(ShoppingListItem item) {
+        return shoppingListRepo.save(item);
+    }
+
+    @Transactional
+    public void clearShoppingList() {
+        shoppingListRepo.deleteAll();
+    }
+
+    public List<String> getAllAvailableIngredientNames() {
+        return ingredientRepo.findAll().stream()
+                .map(i -> i.getName().toLowerCase())
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    public List<Recipe> findRecipesMatchingIngredients(Set<String> myIngredients) {
+        if (myIngredients.isEmpty()) return Collections.emptyList();
+
+        List<Recipe> allRecipes = recipeRepo.findAll();
+        String myIngredientsStr = myIngredients.toString().toLowerCase();
+
+        return allRecipes.stream().filter(recipe -> recipe.getIngredients().stream()
+                .anyMatch(ing -> myIngredients.contains(ing.getName().toLowerCase()))).toList();
     }
 }

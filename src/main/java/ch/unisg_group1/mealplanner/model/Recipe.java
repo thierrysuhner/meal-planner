@@ -16,6 +16,6 @@ public class Recipe {
     private int portions;
     private int calories;
 
-    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<Ingredient> ingredients;
 }

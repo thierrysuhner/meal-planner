@@ -56,6 +56,7 @@ public class MainView extends AppLayout implements RouterLayout {
         Tab mealTab = new Tab(new RouterLink("Plan Meals", MealPlaner.class));
 
         tabs.add(recipeTab,shoppingTab,mealTab);
+        tabs.setSelectedIndex(-1);
         sidebar.add(tabs);
         addToDrawer(sidebar);
 
@@ -67,6 +68,7 @@ public class MainView extends AppLayout implements RouterLayout {
         // Welcome message
         H2 welcome = new H2("Welcome to Your Meal Planner & Grocery Manager!");
         welcome.getStyle().set("margin", "0 auto");
+        welcome.getStyle().set("padding", "10em");
         content.add(welcome);
     }
 
