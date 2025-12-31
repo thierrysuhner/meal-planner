@@ -17,7 +17,7 @@ public class Recipe {
     private int portions;
     private int calories;
 
-    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
-    @JsonManagedReference
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JoinColumn(name = "recipe_id")
     private List<Ingredient> ingredients;
 }

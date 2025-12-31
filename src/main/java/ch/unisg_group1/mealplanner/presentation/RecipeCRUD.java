@@ -10,10 +10,7 @@ import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
-import com.vaadin.flow.component.html.H3;
-import com.vaadin.flow.component.html.Hr;
-import com.vaadin.flow.component.html.Section;
-import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.html.*;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -46,6 +43,11 @@ public class RecipeCRUD extends VerticalLayout {
     public RecipeCRUD(MealPlannerService service) {
         this.service = service;
 
+        HorizontalLayout header = new HorizontalLayout();
+        header.setAlignItems(Alignment.CENTER);
+        header.add(VaadinIcon.CUTLERY.create()); // Passendes Besteck-Icon
+        header.add(new H2("Recipes"));
+
         // 1. GridCrud Konfiguration (Standard Buttons aktiv lassen)
         crud = new GridCrud<>(Recipe.class);
         crud.setCrudListener(new RecipeCRUDListener(service));
@@ -66,24 +68,24 @@ public class RecipeCRUD extends VerticalLayout {
 
         setupEditorView();
 
-        add(new H3("Recipes"), crud, editorContainer);
+        add(header, crud, editorContainer);
         setSizeFull();
 
         Hr divider = new Hr();
         add(divider);
 
         Section recipeFinderSection = new Section();
-        recipeFinderSection.add(new H3("Rezept-Finder (Was habe ich da?)"));
+        recipeFinderSection.add(new H3("Recipe Finder"));
 
         // 1. Eingabe der vorhandenen Zutaten
-        MultiSelectComboBox<String> inventoryPicker = new MultiSelectComboBox<>("Meine Zutaten");
+        MultiSelectComboBox<String> inventoryPicker = new MultiSelectComboBox<>("My Ingredients");
         inventoryPicker.setItems(service.getAllAvailableIngredientNames());
-        inventoryPicker.setPlaceholder("Zutaten auswählen...");
+        inventoryPicker.setPlaceholder("Choose Ingredients...");
         inventoryPicker.setWidthFull();
 
         Grid<Recipe> resultGrid = new Grid<>(Recipe.class, false);
-        resultGrid.addColumn(Recipe::getName).setHeader("Rezept");
-        resultGrid.addColumn(r -> r.getCalories() + " kcal").setHeader("Kalorien");
+        resultGrid.addColumn(Recipe::getName).setHeader("Recipe");
+        resultGrid.addColumn(r -> r.getCalories() + " kcal").setHeader("Calories");
 
         // 2. Suche triggern
         inventoryPicker.addValueChangeListener(e -> {
@@ -114,18 +116,18 @@ public class RecipeCRUD extends VerticalLayout {
             layout.setSpacing(false);
 
             if (missing.isEmpty()) {
-                Span allSet = new Span("Alles vorhanden!");
+                Span allSet = new Span("Everything at Hand!");
                 allSet.getElement().getStyle().set("color", "var(--lumo-success-text-color)");
                 layout.add(allSet);
             } else {
-                Span missingSpan = new Span("Fehlt: " + missingText);
+                Span missingSpan = new Span("Missing: " + missingText);
                 missingSpan.getElement().getStyle().set("font-size", "var(--lumo-font-size-s)");
                 missingSpan.getElement().getStyle().set("color", "var(--lumo-error-text-color)");
                 layout.add(missingSpan);
             }
 
             return layout;
-        }).setHeader("Fehlende Zutaten & Aktion").setFlexGrow(2); // Mehr Platz für diese Spalte
+        }).setHeader("Missing Ingredients").setFlexGrow(2);
 
         resultGrid.addThemeVariants(GridVariant.LUMO_WRAP_CELL_CONTENT);
         add(recipeFinderSection, inventoryPicker, resultGrid);
@@ -200,64 +202,56 @@ public class RecipeCRUD extends VerticalLayout {
         if (currentRecipe == null || currentRecipe.getId() == null) {
             Notification.show("Please first create a recipe and then select it!");
             return;
-        } else if (portions.getValue() <= 0) { // Check if portions bigger than 0
+        }
+        if (portions.getValue() <= 0) {
             Notification.show("Portions have to be greater than 0");
             return;
         }
+
         try {
-            // SCHRITT 1: Hol dir die ID
-            Long id = currentRecipe.getId();
+            List<Ingredient> ingredientsFromUI = new ArrayList<>();
 
-            // SCHRITT 2: Lade das Rezept absolut frisch aus der Datenbank (WICHTIG!)
-            // Das verhindert den Optimistic Locking Fehler, da wir die neueste Version/Version-ID erhalten
-            Recipe recipeToUpdate = service.fetchRecipeWithIngredients(id);
-
-            // SCHRITT 3: Update nur die Felder, die du unten im Formular hast
-            recipeToUpdate.setPortions(portions.getValue());
-
-            int totalCalories = 0;
-            List<Ingredient> newList = new ArrayList<>();
-
+            // Nur Daten aus UI einsammeln
             for (Component component : ingredientsLayout.getChildren().toList()) {
                 if (component instanceof HorizontalLayout row) {
-                    if (((TextField) row.getComponentAt(0)).getValue() == null ||
-                        ((NumberField) row.getComponentAt(1)).getValue() == null ||
-                        ((TextField) row.getComponentAt(2)).getValue().isEmpty()) {
-                        Notification.show("Please fill in at least Name, Amount and Unit of an ingredient.");
+                    // Validierung (könnte man noch schöner machen)
+                    if (isRowInvalid(row)) {
+                        Notification.show("Please fill in at least Name, Amount and Unit.");
                         return;
                     }
+
                     Ingredient i = new Ingredient();
                     i.setName(((TextField) row.getComponentAt(0)).getValue());
                     i.setAmount(((NumberField) row.getComponentAt(1)).getValue());
                     i.setUnit(((TextField) row.getComponentAt(2)).getValue());
+                    i.setCalories(((IntegerField) row.getComponentAt(3)).getValue() != null ?
+                            ((IntegerField) row.getComponentAt(3)).getValue() : 0);
 
-                    // Kalorien aus dem neuen Feld (Index 3) holen
-                    int cals = ((IntegerField) row.getComponentAt(3)).getValue() != null ?
-                            ((IntegerField) row.getComponentAt(3)).getValue() : 0;
-                    i.setCalories(cals);
-                    totalCalories += cals; // Summieren
-                    i.setRecipe(recipeToUpdate);
-                    newList.add(i);
+                    ingredientsFromUI.add(i);
                 }
             }
 
-            // TODO: Kalorienberechnung in service auslagern
-            totalCalories /= portions.getValue();
-            recipeToUpdate.setCalories(totalCalories); // Gesamtsumme im Rezept speichern
-            recipeToUpdate.getIngredients().clear();
-            recipeToUpdate.getIngredients().addAll(newList);
+            // DER SERVICE-AUFRUF
+            Recipe saved = service.updateRecipeDetails(
+                    currentRecipe.getId(),
+                    portions.getValue(),
+                    ingredientsFromUI
+            );
 
-            // SCHRITT 6: Speichern
-            Recipe saved = service.saveRecipe(recipeToUpdate);
-
-            // SCHRITT 7: UI aktualisieren
-            this.currentRecipe = saved; // Wichtig: Die neue Version im Speicher halten
+            // UI Aktualisierung
+            this.currentRecipe = saved;
             crud.refreshGrid();
             Notification.show("Ingredients for '" + saved.getName() + "' saved successfully!");
 
         } catch (Exception e) {
-            Notification.show("Error while saving the details: " + e.getMessage());
-            e.printStackTrace();
+            Notification.show("Error: " + e.getMessage());
         }
+    }
+
+    // Hilfsmethode für die Übersichtlichkeit
+    private boolean isRowInvalid(HorizontalLayout row) {
+        return ((TextField) row.getComponentAt(0)).getValue() == null ||
+                ((NumberField) row.getComponentAt(1)).getValue() == null ||
+                ((TextField) row.getComponentAt(2)).getValue().isEmpty();
     }
 }

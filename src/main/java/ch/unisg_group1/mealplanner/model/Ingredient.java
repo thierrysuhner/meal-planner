@@ -15,8 +15,4 @@ public class Ingredient {
     private double amount;
     private String unit;
     private int calories;
-
-    @ManyToOne
-    @JsonBackReference
-    private Recipe recipe;
 }

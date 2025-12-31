@@ -9,7 +9,10 @@ import com.vaadin.flow.component.charts.Chart;
 import com.vaadin.flow.component.charts.model.*;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextField;
@@ -23,9 +26,7 @@ import org.vaadin.stefan.fullcalendar.dataprovider.EntryProvider;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
+import java.util.Locale;
 
 @Route(value = "mealplaner", layout = MainView.class)
 public class MealPlaner extends VerticalLayout {
@@ -42,15 +43,22 @@ public class MealPlaner extends VerticalLayout {
         this.service = service;
         this.setSizeFull();
 
+        HorizontalLayout header = new HorizontalLayout();
+        header.setAlignItems(Alignment.CENTER);
+        header.add(VaadinIcon.CALENDAR.create());
+        header.add(new H2("Plan Meals"));
+
         // 1. Kalender mit Selection-Optionen konfigurieren
         JsonObject initialOptions = Json.createObject();
         initialOptions.put("selectable", true);
         initialOptions.put("selectMirror", true);
+        initialOptions.put("nowIndicator",true);
 
         this.calendar = FullCalendarBuilder.create()
                 .withInitialOptions(initialOptions)
                 .build();
         calendar.changeView(CalendarViewImpl.TIME_GRID_WEEK);
+        calendar.setLocale(Locale.ENGLISH);
         calendar.setSizeFull();
 
         // 2. Data Provider einrichten (Verbindung DB -> Kalender)
@@ -68,7 +76,7 @@ public class MealPlaner extends VerticalLayout {
             // Die ID des Entries entspricht der ID des Meals in der Datenbank
             String mealId = event.getEntry().getId();
 
-            service.findById(Long.parseLong(mealId)).ifPresent(meal -> {
+            service.findMealById(Long.parseLong(mealId)).ifPresent(meal -> {
                 openMealEditDialog(meal);
             });
         });
@@ -83,11 +91,11 @@ public class MealPlaner extends VerticalLayout {
 
         // 2. Chart Setup
         this.calorieChart = new Chart(ChartType.LINE);
-        this.calorieSeries = new DataSeries("Kalorien pro Tag");
+        this.calorieSeries = new DataSeries("Calories per Day");
         setupChartConfig();
 
         // Layout: Kalender oben, Chart unten
-        add(calendar, calorieChart);
+        add(header, calendar, calorieChart);
 
         // Chart initial laden
         updateChart(LocalDate.now().minusDays(3), LocalDate.now().plusDays(4));
@@ -102,7 +110,7 @@ public class MealPlaner extends VerticalLayout {
                             .stream()
                             .map(this::mapMealToEntry);
                 },
-                entryId -> service.findById(Long.parseLong(entryId))
+                entryId -> service.findMealById(Long.parseLong(entryId))
                         .map(this::mapMealToEntry)
                         .orElse(null)
         );
@@ -124,19 +132,19 @@ public class MealPlaner extends VerticalLayout {
 
         // Check ob neu oder bestehend (Long id != null)
         boolean isNew = (meal.getId() == null);
-        dialog.setHeaderTitle(isNew ? "Neues Meal planen" : "Meal bearbeiten");
+        dialog.setHeaderTitle(isNew ? "Plan New Meal" : "Edit Meal");
 
         // 1. Titel
-        TextField titleField = new TextField("Titel (optional)");
+        TextField titleField = new TextField("Title (optional)");
         titleField.setValue(meal.getTitle() != null ? meal.getTitle() : "");
-        titleField.setPlaceholder("z.B. Kochabend");
+        titleField.setPlaceholder("e.g. Brunch with Friends");
         titleField.setWidthFull();
 
         // 2. Rezepte Multi-Select
-        MultiSelectComboBox<Recipe> recipePicker = new MultiSelectComboBox<>("Rezepte auswählen");
+        MultiSelectComboBox<Recipe> recipePicker = new MultiSelectComboBox<>("Choose Recipes");
         recipePicker.setItems(service.getAllRecipes());
         recipePicker.setItemLabelGenerator(Recipe::getName);
-        recipePicker.setPlaceholder("Rezepte suchen...");
+        recipePicker.setPlaceholder("Search for Recipes...");
         recipePicker.setWidthFull();
 
         // Vorselektieren der bestehenden Rezepte
@@ -145,7 +153,7 @@ public class MealPlaner extends VerticalLayout {
         }
 
         // 3. Personen
-        IntegerField personsField = new IntegerField("Anzahl Personen");
+        IntegerField personsField = new IntegerField("Amount of People");
         personsField.setValue(meal.getPersons() > 0 ? meal.getPersons() : 2);
         personsField.setStepButtonsVisible(true);
         personsField.setMin(1);
@@ -157,17 +165,17 @@ public class MealPlaner extends VerticalLayout {
         // 4. Buttons im Footer
 
         // ABBRECHEN
-        Button cancelButton = new Button("Abbrechen", i -> dialog.close());
+        Button cancelButton = new Button("Cancel", i -> dialog.close());
         dialog.getFooter().add(cancelButton);
 
         // LÖSCHEN (Nur bei bestehenden Meals)
         if (!isNew) {
-            Button deleteButton = new Button("Löschen", e -> {
+            Button deleteButton = new Button("Delete", e -> {
                 service.deleteMeal(meal);
                 calendar.getEntryProvider().refreshAll();
                 updateChart(currentStart, currentEnd);
                 dialog.close();
-                Notification.show("Meal gelöscht");
+                Notification.show("Meal deleted");
             });
             deleteButton.addThemeVariants(ButtonVariant.LUMO_ERROR);
             // Wir schieben den Löschen-Button nach links (standardmäßig)
@@ -175,7 +183,7 @@ public class MealPlaner extends VerticalLayout {
         }
 
         // SPEICHERN
-        Button saveButton = new Button("Speichern", e -> {
+        Button saveButton = new Button("Save", e -> {
             meal.setTitle(titleField.getValue());
             meal.setPersons(personsField.getValue() != null ? personsField.getValue() : 0);
 
@@ -195,7 +203,7 @@ public class MealPlaner extends VerticalLayout {
             calendar.getEntryProvider().refreshAll();
             updateChart(currentStart, currentEnd);
             dialog.close();
-            Notification.show(isNew ? "Meal erstellt" : "Meal aktualisiert");
+            Notification.show(isNew ? "Meal created" : "Meal updated");
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         dialog.getFooter().add(saveButton);

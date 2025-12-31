@@ -5,6 +5,8 @@ import ch.unisg_group1.mealplanner.service.MealPlannerService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -21,14 +23,18 @@ public class ShoppingListCRUD extends VerticalLayout {
 
     public ShoppingListCRUD(MealPlannerService service) {
         this.service = service;
-
         GridCrud<ShoppingListItem> crud = new GridCrud<>(ShoppingListItem.class);
+
+        HorizontalLayout header = new HorizontalLayout();
+        header.setAlignItems(Alignment.CENTER);
+        header.add(VaadinIcon.CART.create());
+        header.add(new H2("Shopping Lists"));
 
         // 1. Controls erstellen
         DatePicker startPicker = new DatePicker("From", LocalDate.now());
         DatePicker endPicker = new DatePicker("To", LocalDate.now().plusDays(7));
 
-        Button generateBtn = new Button("Liste generieren", e -> {
+        Button generateBtn = new Button("Generate List", e -> {
             if (startPicker.getValue() != null && endPicker.getValue() != null) {
                 // Generierung im Service anstoßen
                 service.generateShoppingListFromMeals(startPicker.getValue(), endPicker.getValue());
@@ -43,10 +49,10 @@ public class ShoppingListCRUD extends VerticalLayout {
         });
         generateBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        Button clearBtn = new Button("Liste leeren", e -> {
+        Button clearBtn = new Button("Empty List", e -> {
             service.clearShoppingList();
             crud.refreshGrid();
-            Notification.show("Liste wurde geleert");
+            Notification.show("List has been emptied");
         });
         clearBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
 
@@ -59,7 +65,7 @@ public class ShoppingListCRUD extends VerticalLayout {
         crud.getCrudFormFactory().setVisibleProperties("name", "totalAmount", "unit");
 
 
-        add(controls, crud);
+        add(header, controls, crud);
         setSizeFull();
     }
 

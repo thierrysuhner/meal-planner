@@ -26,18 +26,8 @@ public class MealPlannerService {
         this.mealShoppingListRepo = mealShoppingListRepo;
     }
 
-    // Recipe CRUD
-    public List<Recipe> getAllRecipes() {
-        return recipeRepo.findAll();
-    }
-
-    public Recipe saveRecipe(Recipe recipe) {
-        return recipeRepo.save(recipe);
-    }
-
-    public void deleteRecipe(Long recipeId) {
-        recipeRepo.deleteById(recipeId);
-    }
+    // RECIPE
+    public List<Recipe> getAllRecipes() { return recipeRepo.findAll(); }
 
     @Transactional
     public Recipe fetchRecipeWithIngredients(Long id) {
@@ -46,8 +36,54 @@ public class MealPlannerService {
         return r;
     }
 
+    public Recipe saveRecipe(Recipe recipe) {
+        return recipeRepo.save(recipe);
+    }
+
+    @Transactional
+    public Recipe updateRecipeDetails(Long recipeId, int portions, List<Ingredient> newIngredients) {
+        // 1. Frisch aus der DB laden
+        Recipe recipeToUpdate = fetchRecipeWithIngredients(recipeId);
+
+        // 2. Felder setzen
+        recipeToUpdate.setPortions(portions);
+
+        // 3. Kalorien berechnen
+        int totalCalories = newIngredients.stream()
+                .mapToInt(Ingredient::getCalories)
+                .sum();
+
+        if (portions > 0) {
+            recipeToUpdate.setCalories(totalCalories / portions);
+        }
+
+        // 4. Zutaten aktualisieren
+        recipeToUpdate.getIngredients().clear();
+        for (Ingredient ing : newIngredients) {
+            recipeToUpdate.getIngredients().add(ing);
+        }
+
+        // 5. Speichern
+        return recipeRepo.save(recipeToUpdate);
+    }
+
+    @Transactional
+    public void deleteRecipe(Long recipeId) {
+        recipeRepo.deleteById(recipeId);
+    }
+
+
+    // MEALS
     public List<Meal> findMealsInRange(LocalDateTime start, LocalDateTime end) {
         return mealRepo.findByStartTimeBetween(start, end);
+    }
+
+    public Optional<Meal> findMealById(Long id) {
+        return mealRepo.findById(id);
+    }
+
+    public Meal saveMeal(Meal meal) {
+        return mealRepo.save(meal);
     }
 
     public int calculateCaloriesForDay(LocalDate localDate) {
@@ -62,20 +98,45 @@ public class MealPlannerService {
                 .sum();
     }
 
-    public Meal saveMeal(Meal meal) {
-        return mealRepo.save(meal);
-    }
-
+    @Transactional
     public void deleteMeal(Meal meal) {
         mealRepo.delete(meal);
     }
 
+    @Transactional
     public void deleteMealById(long id) {
         mealRepo.deleteById(id);
     }
 
-    public Optional<Meal> findById(Long id) {
-        return mealRepo.findById(id);
+
+
+    // SHOPPING LISTS
+    public List<ShoppingListItem> getAllShoppingListItems() {
+        List<ShoppingListItem> allItems = shoppingListRepo.findAll();
+
+        // Aggregation per Stream: Gruppieren nach Name+Einheit und Mengen summieren
+        Map<String, ShoppingListItem> summary = allItems.stream()
+                .collect(Collectors.toMap(
+                        item -> item.getName().toLowerCase() + "-" + item.getUnit().toLowerCase(),
+                        item -> {
+                            // Kopie erstellen, um die Original-Objekte in der DB nicht zu verändern
+                            ShoppingListItem copy = new ShoppingListItem();
+                            copy.setName(item.getName());
+                            copy.setUnit(item.getUnit());
+                            copy.setTotalAmount(item.getTotalAmount());
+                            return copy;
+                        },
+                        (existing, replacement) -> {
+                            existing.setTotalAmount(existing.getTotalAmount() + replacement.getTotalAmount());
+                            return existing;
+                        }
+                ));
+
+        return new ArrayList<>(summary.values());
+    }
+
+    public ShoppingListItem saveShoppingListItem(ShoppingListItem item) {
+        return shoppingListRepo.save(item);
     }
 
     @Transactional
@@ -132,46 +193,18 @@ public class MealPlannerService {
         mealShoppingListRepo.save(mealList);
     }
 
-    public List<ShoppingListItem> getAllShoppingListItems() {
-        List<ShoppingListItem> allItems = shoppingListRepo.findAll();
-
-        // Aggregation per Stream: Gruppieren nach Name+Einheit und Mengen summieren
-        Map<String, ShoppingListItem> summary = allItems.stream()
-                .collect(Collectors.toMap(
-                        item -> item.getName().toLowerCase() + "-" + item.getUnit().toLowerCase(),
-                        item -> {
-                            // Kopie erstellen, um die Original-Objekte in der DB nicht zu verändern
-                            ShoppingListItem copy = new ShoppingListItem();
-                            copy.setName(item.getName());
-                            copy.setUnit(item.getUnit());
-                            copy.setTotalAmount(item.getTotalAmount());
-                            return copy;
-                        },
-                        (existing, replacement) -> {
-                            existing.setTotalAmount(existing.getTotalAmount() + replacement.getTotalAmount());
-                            return existing;
-                        }
-                ));
-
-        return new ArrayList<>(summary.values());
-    }
-
+    @Transactional
     public void deleteShoppingListItem(ShoppingListItem item) {
         shoppingListRepo.delete(item);
-    }
-
-    public ShoppingListItem saveShoppingListItem(ShoppingListItem item) {
-        return shoppingListRepo.save(item);
     }
 
     @Transactional
     public void clearShoppingList() {
         mealShoppingListRepo.deleteAll();
-
-        // Safety
         shoppingListRepo.deleteAll();
     }
 
+    // INGREDIENTS
     public List<String> getAllAvailableIngredientNames() {
         return ingredientRepo.findAll().stream()
                 .map(Ingredient::getName)

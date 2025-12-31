@@ -1,11 +1,11 @@
 package ch.unisg_group1.mealplanner.presentation;
 
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
-import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.html.Image;
+import com.vaadin.flow.component.html.*;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -14,16 +14,13 @@ import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.router.RouterLayout;
-import com.vaadin.flow.theme.Theme;
-import com.vaadin.flow.theme.lumo.Lumo;
-
 
 @Route("")
 public class MainView extends AppLayout implements RouterLayout {
     private Div content;
 
     public MainView() {
-// 1. Eigenes Logo einbinden
+        // 1. Eigenes Logo einbinden
         // Der Pfad bezieht sich automatisch auf den "resources" Ordner
         Image logo = new Image("images/logo.png", "Meal Planner Logo");
         logo.setHeight("40px"); // Größe an die Navbar anpassen
@@ -51,9 +48,9 @@ public class MainView extends AppLayout implements RouterLayout {
         tabs.setOrientation(Tabs.Orientation.VERTICAL);
 
         // Tab links
-        Tab recipeTab = new Tab(new RouterLink("Recipes", RecipeCRUD.class));
-        Tab shoppingTab = new Tab(new RouterLink("Shopping Lists", ShoppingListCRUD.class));
-        Tab mealTab = new Tab(new RouterLink("Plan Meals", MealPlaner.class));
+        Tab recipeTab = createTab(VaadinIcon.CUTLERY, "Recipes", RecipeCRUD.class);
+        Tab shoppingTab = createTab(VaadinIcon.CART, "Shopping Lists", ShoppingListCRUD.class);
+        Tab mealTab = createTab(VaadinIcon.CALENDAR, "Plan Meals", MealPlaner.class);
 
         tabs.add(recipeTab,shoppingTab,mealTab);
         tabs.setSelectedIndex(-1);
@@ -63,13 +60,35 @@ public class MainView extends AppLayout implements RouterLayout {
         // Content container
         content = new Div();
         content.setSizeFull();
+        content.getStyle()
+                .set("display", "flex")
+                .set("flex-direction","column")
+                .set("justify-content", "center")
+                .set("align-items", "center")
+                .set("gap", "2rem")
+                .set("text-align", "center");
         setContent(content);
 
         // Welcome message
         H2 welcome = new H2("Welcome to Your Meal Planner & Grocery Manager!");
-        welcome.getStyle().set("margin", "0 auto");
-        welcome.getStyle().set("padding", "10em");
-        content.add(welcome);
+        welcome.getStyle().set("margin", "0");
+
+        Image big_logo = new Image("images/logo.png", "Meal Planner Logo");
+        big_logo.setHeight("10em");
+        content.add(welcome, big_logo);
+    }
+
+    private Tab createTab(VaadinIcon icon, String title, Class<? extends Component> viewClass) {
+        Icon i = icon.create();
+        i.getStyle().set("box-sizing", "border-box")
+                .set("margin-inline-end", "var(--lumo-space-m)") // Abstand zwischen Icon und Text
+                .set("padding", "var(--lumo-space-xs)");
+
+        RouterLink link = new RouterLink();
+        link.add(i, new Span(title)); // Icon + Text in den Link packen
+        link.setRoute(viewClass);
+
+        return new Tab(link);
     }
 
 }
