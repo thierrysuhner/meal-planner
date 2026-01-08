@@ -91,7 +91,7 @@ public class MealPlaner extends VerticalLayout {
 
         // 2. Chart Setup
         this.calorieChart = new Chart(ChartType.LINE);
-        this.calorieSeries = new DataSeries("Calories per Day");
+        this.calorieSeries = new DataSeries("Calories per Person per Day");
         setupChartConfig();
 
         // Layout: Kalender oben, Chart unten
@@ -213,7 +213,7 @@ public class MealPlaner extends VerticalLayout {
 
     private void setupChartConfig() {
         Configuration conf = calorieChart.getConfiguration();
-        conf.setTitle("Weekly Calorie Overview");
+        conf.setTitle("Your Personal Weekly Calorie Overview");
         conf.getxAxis().setType(AxisType.CATEGORY);
         conf.getyAxis().setTitle("Calories");
 

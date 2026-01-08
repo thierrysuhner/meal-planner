@@ -55,12 +55,14 @@ public class RecipeCRUD extends VerticalLayout {
         crud.getCrudFormFactory().setVisibleProperties("name", "description");
         crud.getGrid().getColumnByKey("calories").setHeader("Calories (per portion)");
 
-        crud.getGrid().addItemClickListener(event -> {
-            Recipe selected = event.getItem();
-            if (selected != null && selected.getId() != null) {
-                Recipe fullRecipe = service.fetchRecipeWithIngredients(selected.getId());
-                showEditor(fullRecipe);
-            }
+        crud.getGrid().addSelectionListener(event -> {
+            event.getFirstSelectedItem().ifPresentOrElse(
+                    recipe -> {
+                        Recipe fullRecipe = service.fetchRecipeWithIngredients(recipe.getId());
+                        showEditor(fullRecipe);
+                    },
+                    () -> hideEditor()
+            );
         });
 
         // Sicherstellen, dass das Grid die Klicks nicht für Zeilen-Editing reserviert
@@ -84,7 +86,7 @@ public class RecipeCRUD extends VerticalLayout {
 
         Grid<Recipe> resultGrid = new Grid<>(Recipe.class, false);
         resultGrid.addColumn(Recipe::getName).setHeader("Recipe");
-        resultGrid.addColumn(r -> r.getCalories() + " kcal").setHeader("Calories");
+        resultGrid.addColumn(r -> r.getCalories() + " kcal").setHeader("Calories (per portion)");
         resultGrid.setAllRowsVisible(true); // Das Grid wächst mit der Anzahl der Zeilen
 
         // 2. Suche triggern
@@ -177,6 +179,12 @@ public class RecipeCRUD extends VerticalLayout {
         }
 
         editorContainer.setVisible(true);
+    }
+
+    private void hideEditor() {
+        this.currentRecipe = null;
+        editorContainer.setVisible(false);
+        ingredientsLayout.removeAll();
     }
 
     private void addIngredientRow(Ingredient ing) {
