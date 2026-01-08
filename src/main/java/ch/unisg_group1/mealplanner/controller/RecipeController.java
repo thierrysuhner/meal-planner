@@ -1,10 +1,14 @@
 package ch.unisg_group1.mealplanner.controller;
 
+import ch.unisg_group1.mealplanner.model.Ingredient;
 import ch.unisg_group1.mealplanner.model.Recipe;
 import ch.unisg_group1.mealplanner.service.MealPlannerService;
 import ch.unisg_group1.mealplanner.persistence.RecipeRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -37,5 +41,37 @@ public class RecipeController {
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
         recipeRepo.deleteById(id);
+    }
+
+    @PostMapping("/{id}/ingredients")
+    public Recipe addIngredientToRecipe(@PathVariable Long id, @RequestBody Ingredient ingredient) {
+        Recipe recipe = recipeRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
+
+        if (recipe.getIngredients() == null) {
+            recipe.setIngredients(new ArrayList<>());
+        }
+        recipe.getIngredients().add(ingredient);
+        return recipeRepo.save(recipe);
+    }
+
+    @GetMapping("/{id}/ingredients")
+    public List<Ingredient> getIngredients(@PathVariable Long id) {
+        Recipe recipe = recipeRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
+
+        return recipe.getIngredients();
+    }
+
+    @DeleteMapping("/{recipeId}/ingredients/{ingredientId}")
+    public Recipe removeIngredientFromRecipe(@PathVariable Long recipeId, @PathVariable Long ingredientId) {
+        Recipe recipe = recipeRepo.findById(recipeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
+
+        if (recipe.getIngredients() != null) {
+            recipe.getIngredients().removeIf(i -> i.getId() != null && i.getId().equals(ingredientId));
+        }
+
+        return recipeRepo.save(recipe);
     }
 }
