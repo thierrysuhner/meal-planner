@@ -74,10 +74,9 @@ public class RecipeCRUD extends VerticalLayout {
         Hr divider = new Hr();
         add(divider);
 
-        Section recipeFinderSection = new Section();
-        recipeFinderSection.add(new H3("Recipe Finder"));
-
-        // 1. Eingabe der vorhandenen Zutaten
+        VerticalLayout finderContainer = new VerticalLayout();
+        finderContainer.setPadding(true);
+        H3 finderTitle = new H3("Recipe Finder");
         MultiSelectComboBox<String> inventoryPicker = new MultiSelectComboBox<>("My Ingredients");
         inventoryPicker.setItems(service.getAllAvailableIngredientNames());
         inventoryPicker.setPlaceholder("Choose Ingredients...");
@@ -86,10 +85,14 @@ public class RecipeCRUD extends VerticalLayout {
         Grid<Recipe> resultGrid = new Grid<>(Recipe.class, false);
         resultGrid.addColumn(Recipe::getName).setHeader("Recipe");
         resultGrid.addColumn(r -> r.getCalories() + " kcal").setHeader("Calories");
+        resultGrid.setAllRowsVisible(true); // Das Grid wächst mit der Anzahl der Zeilen
 
         // 2. Suche triggern
         inventoryPicker.addValueChangeListener(e -> {
-            List<Recipe> matches = service.findRecipesMatchingIngredients(e.getValue());
+            List<Recipe> matches = service.findRecipesMatchingIngredients(e.getValue())
+                    .stream()
+                    .map(r -> service.fetchRecipeWithIngredients(r.getId()))
+                    .toList();
             resultGrid.setItems(matches);
         });
 
@@ -129,8 +132,14 @@ public class RecipeCRUD extends VerticalLayout {
             return layout;
         }).setHeader("Missing Ingredients").setFlexGrow(2);
 
+        Div footerSpacer = new Div();
+        footerSpacer.setHeight("5em");
+        footerSpacer.getStyle().set("flex-shrink", "0");
+        footerSpacer.setWidthFull();
+
+        finderContainer.add(finderTitle,inventoryPicker,resultGrid);
         resultGrid.addThemeVariants(GridVariant.LUMO_WRAP_CELL_CONTENT);
-        add(recipeFinderSection, inventoryPicker, resultGrid);
+        add(finderContainer, inventoryPicker, resultGrid, footerSpacer);
     }
 
     private void setupEditorView() {

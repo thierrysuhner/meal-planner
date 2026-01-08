@@ -61,7 +61,12 @@ public class ShoppingListCRUD extends VerticalLayout {
 
         // 2. CRUD Grid
         crud.setCrudListener(new ShoppingListCRUDListener(service));
-        crud.getGrid().setColumns("name", "totalAmount", "unit");
+        crud.getGrid().setColumns("name");
+        crud.getGrid().addColumn(item ->
+                        String.format("%.2f", item.getTotalAmount()))
+                        .setHeader("Amount")
+                        .setKey("totalAmount");
+        crud.getGrid().addColumn("unit");
         crud.getCrudFormFactory().setVisibleProperties("name", "totalAmount", "unit");
 
 
