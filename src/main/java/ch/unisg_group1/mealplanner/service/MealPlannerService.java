@@ -18,7 +18,8 @@ public class MealPlannerService {
     private final IngredientRepository ingredientRepo;
     private final MealShoppingListRepository mealShoppingListRepo;
 
-    public MealPlannerService(RecipeRepository recipeRepo, MealRepository mealRepo, ShoppingListItemRepository shoppingListRepo, IngredientRepository ingredientRepo, MealShoppingListRepository mealShoppingListRepo) {
+    public MealPlannerService(RecipeRepository recipeRepo, MealRepository mealRepo, ShoppingListItemRepository shoppingListRepo,
+                              IngredientRepository ingredientRepo, MealShoppingListRepository mealShoppingListRepo) {
         this.recipeRepo = recipeRepo;
         this.mealRepo = mealRepo;
         this.shoppingListRepo = shoppingListRepo;
@@ -26,7 +27,7 @@ public class MealPlannerService {
         this.mealShoppingListRepo = mealShoppingListRepo;
     }
 
-    // RECIPE
+    // --- RECIPES ---
     public List<Recipe> getAllRecipes() { return recipeRepo.findAll(); }
 
     @Transactional
@@ -36,34 +37,39 @@ public class MealPlannerService {
         return r;
     }
 
-    public Recipe saveRecipe(Recipe recipe) {
-        return recipeRepo.save(recipe);
-    }
+    public Recipe saveRecipe(Recipe recipe) { return recipeRepo.save(recipe); }
 
     @Transactional
     public Recipe updateRecipeDetails(Long recipeId, int portions, List<Ingredient> newIngredients) {
-        // 1. Frisch aus der DB laden
+        // Load recipes from DB
         Recipe recipeToUpdate = fetchRecipeWithIngredients(recipeId);
 
-        // 2. Felder setzen
-        recipeToUpdate.setPortions(portions);
-
-        // 3. Kalorien berechnen
-        int totalCalories = newIngredients.stream()
-                .mapToInt(Ingredient::getCalories)
+        // Sum up calories for ingredients
+        long totalCaloriesLong = newIngredients.stream()
+                .mapToLong(Ingredient::getCalories) // long statt int
                 .sum();
 
+        // Check if calories are overflowing and then cast them to int
+        if (totalCaloriesLong > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Calories summed together can't be bigger than integer max value");
+        }
+        int totalCalories = (int) totalCaloriesLong;
+
+        // Set calories and portions if valid amount
         if (portions > 0) {
             recipeToUpdate.setCalories(totalCalories / portions);
+            recipeToUpdate.setPortions(portions);
+        } else {
+            throw new IllegalArgumentException("Portions must be greater than 0");
         }
 
-        // 4. Zutaten aktualisieren
+        // Update ingredients
         recipeToUpdate.getIngredients().clear();
         for (Ingredient ing : newIngredients) {
             recipeToUpdate.getIngredients().add(ing);
         }
 
-        // 5. Speichern
+        // Persist recipe
         return recipeRepo.save(recipeToUpdate);
     }
 
@@ -73,7 +79,7 @@ public class MealPlannerService {
     }
 
 
-    // MEALS
+    // --- MEALS ---
     public List<Meal> findMealsInRange(LocalDateTime start, LocalDateTime end) {
         return mealRepo.findByStartTimeBetween(start, end);
     }
@@ -87,15 +93,21 @@ public class MealPlannerService {
     }
 
     public int calculateCaloriesForDay(LocalDate localDate) {
-        // 1. Alle Meals für den spezifischen Tag holen
+        // Get meals of day
         List<Meal> meals = findMealsInRange(localDate.atStartOfDay(), localDate.atTime(23, 59, 59));
 
-        // 2. Summe berechnen: (Summe Kalorien der Rezepte) * Personen pro Meal
-        return meals.stream()
-                .mapToInt(meal -> meal.getRecipes().stream()
-                        .mapToInt(Recipe::getCalories)
-                        .sum())
-                .sum();
+        // Calculate sum of recipe calories first as long
+        long calorieSumLong = meals.stream()
+                                .mapToLong(meal -> meal.getRecipes().stream()
+                                        .mapToLong(Recipe::getCalories)
+                                        .sum())
+                                .sum();
+        // Check if calories overflow int
+        if (calorieSumLong > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Calories summed together can't be bigger than integer max value");
+        }
+
+        return (int) calorieSumLong;
     }
 
     @Transactional
@@ -109,17 +121,16 @@ public class MealPlannerService {
     }
 
 
-
-    // SHOPPING LISTS
+    // --- SHOPPING LISTS ---
     public List<ShoppingListItem> getAllShoppingListItems() {
         List<ShoppingListItem> allItems = shoppingListRepo.findAll();
 
-        // Aggregation per Stream: Gruppieren nach Name+Einheit und Mengen summieren
+        // Group items with name+unit, sum up amounts
         Map<String, ShoppingListItem> summary = allItems.stream()
                 .collect(Collectors.toMap(
                         item -> item.getName().toLowerCase() + "-" + item.getUnit().toLowerCase(),
                         item -> {
-                            // Kopie erstellen, um die Original-Objekte in der DB nicht zu verändern
+                            // Create copy to not manipulate original objects in DB
                             ShoppingListItem copy = new ShoppingListItem();
                             copy.setName(item.getName());
                             copy.setUnit(item.getUnit());
@@ -127,6 +138,12 @@ public class MealPlannerService {
                             return copy;
                         },
                         (existing, replacement) -> {
+                            double newTotal = existing.getTotalAmount() + replacement.getTotalAmount();
+
+                            // Check for double overflow
+                            if (Double.isInfinite(newTotal)) {
+                                throw new IllegalArgumentException("Total amount overflow for shopping list item: " + existing.getName());
+                            }
                             existing.setTotalAmount(existing.getTotalAmount() + replacement.getTotalAmount());
                             return existing;
                         }
@@ -143,32 +160,35 @@ public class MealPlannerService {
     public void generateShoppingListFromMeals(LocalDate start, LocalDate end) {
         mealShoppingListRepo.deleteAll();
 
-        // 1. Alle Meals im Zeitraum laden
+        // Load all meals from given time frame
         List<Meal> meals = mealRepo.findByStartTimeBetween(start.atStartOfDay(), end.atTime(23, 59));
 
+        // Do nothing if no meals found
         if (meals.isEmpty()) {
-            return; // Nichts zu tun
+            return;
         }
 
-        // Map zum Aggregieren der Zutaten für DIESEN spezifischen Lauf
-        Map<String, ShoppingListItem> aggregatedItems = new HashMap<>();
-
         for (Meal meal : meals) {
+            // Initialize empty map for each meal
+            Map<String, ShoppingListItem> aggregatedItems = new HashMap<>();
             int mealPersons = meal.getPersons();
+            // Check if person-amount is valid
+            if (mealPersons < 1) { throw new IllegalArgumentException("Person-Amount for meal must be greater than 0."); }
 
             for (Recipe recipe : meal.getRecipes()) {
                 double recipePortions = recipe.getPortions();
                 for (Ingredient ing : recipe.getIngredients()) {
-                    // Menge berechnen
+                    // Calculate amount adjusted for people eating meal
                     double adjustedAmount = (ing.getAmount() / recipePortions) * mealPersons;
 
-                    // Aufrunden bei Stückzahlen
-                    if ("pcs".equalsIgnoreCase(ing.getUnit())) {
+                    // Round up when pieces are used
+                    Set<String> pieceUnits = Set.of("pc", "pcs", "pieces", "piece");
+                    if (pieceUnits.contains(ing.getUnit().toLowerCase())) {
                         adjustedAmount = Math.ceil(adjustedAmount);
                     }
 
                     String key = ing.getName().toLowerCase() + "-" + ing.getUnit();
-
+                    // Update total amount or create new item
                     if (aggregatedItems.containsKey(key)) {
                         ShoppingListItem existing = aggregatedItems.get(key);
                         existing.setTotalAmount(existing.getTotalAmount() + adjustedAmount);
@@ -181,22 +201,18 @@ public class MealPlannerService {
                     }
                 }
             }
+
+            // Create new MealShoppingList and add items
+            MealShoppingList mealList = new MealShoppingList();
+            mealList.setItems(new ArrayList<>(aggregatedItems.values()));
+
+            // Persist, ShoppingListItems automatically persisted because of CascadeType.ALL
+            mealShoppingListRepo.save(mealList);
         }
-
-        // 2. Neue MealShoppingList erstellen und mit den Items verknüpfen
-        MealShoppingList mealList = new MealShoppingList();
-        // Wir wandeln die Map-Werte in eine ArrayList um
-        mealList.setItems(new ArrayList<>(aggregatedItems.values()));
-
-        // 3. Speichern
-        // Da CascadeType.ALL gesetzt ist, werden die ShoppingListItems automatisch mitgespeichert
-        mealShoppingListRepo.save(mealList);
     }
 
     @Transactional
-    public void deleteShoppingListItem(ShoppingListItem item) {
-        shoppingListRepo.delete(item);
-    }
+    public void deleteShoppingListItem(ShoppingListItem item) { shoppingListRepo.delete(item); }
 
     @Transactional
     public void clearShoppingList() {
@@ -204,7 +220,7 @@ public class MealPlannerService {
         shoppingListRepo.deleteAll();
     }
 
-    // INGREDIENTS
+    // --- INGREDIENTS ---
     public List<String> getAllAvailableIngredientNames() {
         return ingredientRepo.findAll().stream()
                 .map(Ingredient::getName)
@@ -216,14 +232,15 @@ public class MealPlannerService {
     public List<Recipe> findRecipesMatchingIngredients(Set<String> myIngredients) {
         if (myIngredients.isEmpty()) return Collections.emptyList();
 
-        // 1. Alle Suchbegriffe in Kleinschreibung umwandeln für den Vergleich
+        // Collect all given ingredients to lower case
         Set<String> searchSet = myIngredients.stream()
                 .map(String::toLowerCase)
                 .collect(Collectors.toSet());
 
+        // Get all recipes fresh from DB
         List<Recipe> allRecipes = recipeRepo.findAll();
 
-        // 2. Filtern
+        // Filter recipes, given ingredients should match at least one of recipe's ingredients
         return allRecipes.stream().filter(recipe ->
                 recipe.getIngredients().stream()
                         .anyMatch(ing -> searchSet.contains(ing.getName().toLowerCase()))
