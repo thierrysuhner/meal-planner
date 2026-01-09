@@ -29,11 +29,10 @@ public class RecipeController {
     }
 
 
-    // TODO: Fix create to account for calories and save ingredients correctly
     @PostMapping
     public Recipe create(@RequestBody Recipe recipe) {
-        Recipe newRecipe = service.saveRecipe(recipe);
-        return service.updateRecipeDetails(newRecipe.getId(), newRecipe.getPortions(), newRecipe.getIngredients());
+        service.updateRecipeCalories(recipe, recipe.getPortions());
+        return service.saveRecipe(recipe);
     }
 
     @PostMapping("/suggest")
@@ -47,7 +46,6 @@ public class RecipeController {
         recipeRepo.deleteById(id);
     }
 
-    // TODO: Fix calorie calculation
     @PostMapping("/{id}/ingredients")
     public Recipe addIngredientToRecipe(@PathVariable Long id, @RequestBody Ingredient ingredient) {
         Recipe recipe = recipeRepo.findById(id)
@@ -57,6 +55,7 @@ public class RecipeController {
             recipe.setIngredients(new ArrayList<>());
         }
         recipe.getIngredients().add(ingredient);
+        service.updateRecipeCalories(recipe,recipe.getPortions());
         return recipeRepo.save(recipe);
     }
 
@@ -68,7 +67,6 @@ public class RecipeController {
         return recipe.getIngredients();
     }
 
-    // TODO: Fix calorie calculation
     @DeleteMapping("/{id}/ingredients/{ingredientId}")
     public Recipe removeIngredientFromRecipe(@PathVariable Long id, @PathVariable Long ingredientId) {
         Recipe recipe = recipeRepo.findById(id)
@@ -77,22 +75,24 @@ public class RecipeController {
         if (recipe.getIngredients() != null) {
             recipe.getIngredients().removeIf(i -> i.getId() != null && i.getId().equals(ingredientId));
         }
-
+        service.updateRecipeCalories(recipe,recipe.getPortions());
         return recipeRepo.save(recipe);
     }
 
-    //TODO: Fix calorie calculation
     @PutMapping("/{id}")
     public Recipe updateRecipe(@PathVariable Long id, @RequestBody Recipe updatedRecipe) {
         // Ensure the recipe exists (otherwise return 404)
         Recipe existing = recipeRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
 
-        // Keep the correct ID and keep the current ingredients if none are provided
+        // Keep the correct ID
         updatedRecipe.setId(id);
-        if (updatedRecipe.getIngredients() == null) {
-            updatedRecipe.setIngredients(existing.getIngredients());
-        }
+        // Keep current ingredients if none are provided
+        if (updatedRecipe.getIngredients() == null) updatedRecipe.setIngredients(existing.getIngredients());
+        // Keep current portions if none are specified
+        if (updatedRecipe.getPortions() == 0) updatedRecipe.setPortions(existing.getPortions());
+        // Update calories
+        service.updateRecipeCalories(updatedRecipe, updatedRecipe.getPortions());
 
         return recipeRepo.save(updatedRecipe);
     }

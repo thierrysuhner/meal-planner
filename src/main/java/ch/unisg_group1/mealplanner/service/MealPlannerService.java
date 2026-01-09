@@ -40,12 +40,9 @@ public class MealPlannerService {
     public Recipe saveRecipe(Recipe recipe) { return recipeRepo.save(recipe); }
 
     @Transactional
-    public Recipe updateRecipeDetails(Long recipeId, int portions, List<Ingredient> newIngredients) {
-        // Load recipes from DB
-        Recipe recipeToUpdate = fetchRecipeWithIngredients(recipeId);
-
-        // Sum up calories for ingredients
-        long totalCaloriesLong = newIngredients.stream()
+    public void updateRecipeCalories(Recipe recipe, int portions) {
+        // Get ingredients from recipe and sum up their calories
+        long totalCaloriesLong = recipe.getIngredients().stream()
                 .mapToLong(Ingredient::getCalories) // long statt int
                 .sum();
 
@@ -57,17 +54,26 @@ public class MealPlannerService {
 
         // Set calories and portions if valid amount
         if (portions > 0) {
-            recipeToUpdate.setCalories(totalCalories / portions);
-            recipeToUpdate.setPortions(portions);
+            recipe.setCalories(totalCalories / portions);
+            recipe.setPortions(portions);
         } else {
             throw new IllegalArgumentException("Portions must be greater than 0");
         }
+    }
+
+    @Transactional
+    public Recipe updateRecipeDetails(Long recipeId, int portions, List<Ingredient> newIngredients) {
+        // Load recipes from DB
+        Recipe recipeToUpdate = fetchRecipeWithIngredients(recipeId);
 
         // Update ingredients
         recipeToUpdate.getIngredients().clear();
         for (Ingredient ing : newIngredients) {
             recipeToUpdate.getIngredients().add(ing);
         }
+
+        // Update calories
+        updateRecipeCalories(recipeToUpdate, portions);
 
         // Persist recipe
         return recipeRepo.save(recipeToUpdate);

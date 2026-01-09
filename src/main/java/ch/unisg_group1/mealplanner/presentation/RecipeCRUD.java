@@ -228,10 +228,10 @@ public class RecipeCRUD extends VerticalLayout {
         try {
             List<Ingredient> ingredientsFromUI = new ArrayList<>();
 
-            // Nur Daten aus UI einsammeln
+            // Get components from UI
             for (Component component : ingredientsLayout.getChildren().toList()) {
                 if (component instanceof HorizontalLayout row) {
-                    // Validierung (könnte man noch schöner machen)
+                    // Validation
                     if (isRowInvalid(row)) {
                         Notification.show("Please fill in at least Name, Amount and Unit.");
                         return;

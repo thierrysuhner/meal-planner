@@ -56,135 +56,96 @@ class MealPlannerServiceTests {
     }
 
     @Test
-    void updateRecipeDetails_ShouldCalculateCaloriesFor2PortionsCorrectly() {
+    void updateRecipeCalories_ShouldCalculateCaloriesFor2PortionsCorrectly() {
         // Arrange
-        Long recipeId = 1L;
         int newPortions = 2;
 
-        Recipe existingRecipe = new Recipe();
-        existingRecipe.setId(recipeId);
-        existingRecipe.setIngredients(new ArrayList<>());
-
+        Recipe recipe = new Recipe();
         Ingredient ing1 = new Ingredient(); ing1.setCalories(200);
         Ingredient ing2 = new Ingredient(); ing2.setCalories(100);
-        List<Ingredient> newIngredients = List.of(ing1, ing2); // Total 300 kcal
-
-        when(recipeRepo.findById(recipeId)).thenReturn(Optional.of(existingRecipe));
-        when(recipeRepo.save(any(Recipe.class))).thenAnswer(i -> i.getArgument(0));
+        recipe.setIngredients(List.of(ing1, ing2)); // Total 300 kcal
 
         // Act
-        Recipe updated = service.updateRecipeDetails(recipeId, newPortions, newIngredients);
+        service.updateRecipeCalories(recipe, newPortions);
 
         // Assert
         // 300 kcal Total / 2 Portions = 150 kcal per portion
-        assertThat(updated.getCalories()).isEqualTo(150);
+        assertThat(recipe.getCalories()).isEqualTo(150);
     }
 
     @Test
-    void updateRecipeDetails_ShouldCalculateCaloriesForMaxPortionsCorrectly() {
+    void updateRecipeCalories_ShouldCalculateCaloriesForMaxPortionsCorrectly() {
         // Arrange
-        Long recipeId = 1L;
         int newPortions = Integer.MAX_VALUE;
 
-        Recipe existingRecipe = new Recipe();
-        existingRecipe.setId(recipeId);
-        existingRecipe.setIngredients(new ArrayList<>());
-
+        Recipe recipe = new Recipe();
         Ingredient ing1 = new Ingredient(); ing1.setCalories(Integer.MAX_VALUE-1);
         Ingredient ing2 = new Ingredient(); ing2.setCalories(1);
-        List<Ingredient> newIngredients = List.of(ing1, ing2);
-
-        when(recipeRepo.findById(recipeId)).thenReturn(Optional.of(existingRecipe));
-        when(recipeRepo.save(any(Recipe.class))).thenAnswer(i -> i.getArgument(0));
+        recipe.setIngredients(List.of(ing1, ing2)); // Total 300 kcal
 
         // Act
-        Recipe updated = service.updateRecipeDetails(recipeId, newPortions, newIngredients);
+        service.updateRecipeCalories(recipe, newPortions);
 
         // Assert
         // 2147483647 kcal Total / 2147483647 Portions = 1 kcal per portion
-        assertThat(updated.getCalories()).isEqualTo(1);
+        assertThat(recipe.getCalories()).isEqualTo(1);
     }
 
     @Test
-    void updateRecipeDetails_ShouldThrowErrorCalculateCaloriesFor0Portions() {
+    void updateRecipeCalories_ShouldThrowErrorCalculateCaloriesFor0Portions() {
         // Arrange
-        Long recipeId = 1L;
-        Recipe existingRecipe = new Recipe();
-        existingRecipe.setId(recipeId);
-        existingRecipe.setIngredients(new ArrayList<>());
-
+        Recipe recipe = new Recipe();
         Ingredient ing1 = new Ingredient(); ing1.setCalories(300);
-        Ingredient ing2 = new Ingredient(); ing2.setCalories(300);
-        List<Ingredient> newIngredients = List.of(ing1, ing2);
-
-        when(recipeRepo.findById(recipeId)).thenReturn(Optional.of(existingRecipe));
+        Ingredient ing2 = new Ingredient(); ing2.setCalories(200);
+        recipe.setIngredients(List.of(ing1, ing2)); // Total 300 kcal
 
         // Act + Assert
         assertThrows(IllegalArgumentException.class, ()
-                -> service.updateRecipeDetails(recipeId, 0, newIngredients));
+                ->service.updateRecipeCalories(recipe, 0));
     }
 
     @Test
-    void updateRecipeDetails_ShouldThrowErrorCalculateCaloriesForNegativePortions() {
+    void updateRecipeCalories_ShouldThrowErrorCalculateCaloriesForNegativePortions() {
         // Arrange
-        Long recipeId = 1L;
-        Recipe existingRecipe = new Recipe();
-        existingRecipe.setId(recipeId);
-        existingRecipe.setIngredients(new ArrayList<>());
-
+        Recipe recipe = new Recipe();
         Ingredient ing1 = new Ingredient(); ing1.setCalories(300);
-        Ingredient ing2 = new Ingredient(); ing2.setCalories(300);
-        List<Ingredient> newIngredients = List.of(ing1, ing2);
-
-        when(recipeRepo.findById(recipeId)).thenReturn(Optional.of(existingRecipe));
+        Ingredient ing2 = new Ingredient(); ing2.setCalories(200);
+        recipe.setIngredients(List.of(ing1, ing2)); // Total 300 kcal
 
         // Act + Assert
         assertThrows(IllegalArgumentException.class, ()
-                -> service.updateRecipeDetails(recipeId, -2, newIngredients));
+                ->service.updateRecipeCalories(recipe, -1));
     }
 
 
     @Test
-    void updateRecipeDetails_ShouldCalculateMaxValueCalories() {
+    void updateRecipeCalories_ShouldCalculateMaxValueCalories() {
         // Arrange
-        Long recipeId = 1L;
         int newPortions = 1;
 
-        Recipe existingRecipe = new Recipe();
-        existingRecipe.setId(recipeId);
-        existingRecipe.setIngredients(new ArrayList<>());
-
-        Ingredient ing1 = new Ingredient(); ing1.setCalories(Integer.MAX_VALUE - 1);
+        Recipe recipe = new Recipe();
+        Ingredient ing1 = new Ingredient(); ing1.setCalories(Integer.MAX_VALUE-1);
         Ingredient ing2 = new Ingredient(); ing2.setCalories(1);
-        List<Ingredient> newIngredients = List.of(ing1, ing2);
-
-        when(recipeRepo.findById(recipeId)).thenReturn(Optional.of(existingRecipe));
-        when(recipeRepo.save(any(Recipe.class))).thenAnswer(i -> i.getArgument(0));
+        recipe.setIngredients(List.of(ing1, ing2));
 
         // Act
-        Recipe updated = service.updateRecipeDetails(recipeId, newPortions, newIngredients);
+        service.updateRecipeCalories(recipe, newPortions);
 
         // Assert
-        assertThat(updated.getCalories()).isEqualTo(Integer.MAX_VALUE);
+        assertThat(recipe.getCalories()).isEqualTo(Integer.MAX_VALUE);
     }
 
     @Test
-    void updateRecipeDetails_ShouldThrowErrorCalculateOverflowCalories() {
+    void updateRecipeCalories_ShouldThrowErrorCalculateOverflowCalories() {
         // Arrange
-        Long recipeId = 1L;
-        Recipe existingRecipe = new Recipe();
-        existingRecipe.setId(recipeId);
-        existingRecipe.setIngredients(new ArrayList<>());
-
+        Recipe recipe = new Recipe();
         Ingredient ing1 = new Ingredient(); ing1.setCalories(Integer.MAX_VALUE);
         Ingredient ing2 = new Ingredient(); ing2.setCalories(1);
-        List<Ingredient> newIngredients = List.of(ing1, ing2);
-
-        when(recipeRepo.findById(recipeId)).thenReturn(Optional.of(existingRecipe));
+        recipe.setIngredients(List.of(ing1, ing2)); // Total 300 kcal
 
         // Act + Assert
         assertThrows(IllegalArgumentException.class, ()
-                -> service.updateRecipeDetails(recipeId, 0, newIngredients));
+                ->service.updateRecipeCalories(recipe, 1));
     }
 
 
