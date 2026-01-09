@@ -1,9 +1,12 @@
 package ch.unisg_group1.mealplanner.controller;
 
 import ch.unisg_group1.mealplanner.model.Meal;
+import ch.unisg_group1.mealplanner.persistence.MealRepository;
 import ch.unisg_group1.mealplanner.service.MealPlannerService;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -12,9 +15,11 @@ import java.util.List;
 @RequestMapping("api/meals")
 public class MealController {
     private final MealPlannerService service;
+    private final MealRepository mealRepo;
 
-    public MealController(MealPlannerService service) {
+    public MealController(MealPlannerService service, MealRepository mealRepo) {
         this.service = service;
+        this.mealRepo = mealRepo;
     }
 
     @GetMapping
@@ -32,6 +37,7 @@ public class MealController {
 
     @DeleteMapping("/{id}")
     public void deleteMeal(@PathVariable Long id) {
+        mealRepo.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Meal not found"));
         service.deleteMealById(id);
     }
 
@@ -42,6 +48,7 @@ public class MealController {
 
     @PutMapping("/{id}")
     public Meal updateMeal(@PathVariable Long id, @RequestBody Meal updatedMeal) {
+        mealRepo.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Meal not found"));
         updatedMeal.setId(id);
         return service.saveMeal(updatedMeal);
     }

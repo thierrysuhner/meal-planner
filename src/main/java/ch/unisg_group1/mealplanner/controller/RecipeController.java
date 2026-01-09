@@ -40,6 +40,7 @@ public class RecipeController {
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
+        recipeRepo.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
         recipeRepo.deleteById(id);
     }
 
@@ -63,9 +64,9 @@ public class RecipeController {
         return recipe.getIngredients();
     }
 
-    @DeleteMapping("/{recipeId}/ingredients/{ingredientId}")
-    public Recipe removeIngredientFromRecipe(@PathVariable Long recipeId, @PathVariable Long ingredientId) {
-        Recipe recipe = recipeRepo.findById(recipeId)
+    @DeleteMapping("/{id}/ingredients/{ingredientId}")
+    public Recipe removeIngredientFromRecipe(@PathVariable Long id, @PathVariable Long ingredientId) {
+        Recipe recipe = recipeRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
 
         if (recipe.getIngredients() != null) {
@@ -81,7 +82,7 @@ public class RecipeController {
         Recipe existing = recipeRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
 
-        // Keep the correct ID (and optionally keep the current ingredients if none are provided)
+        // Keep the correct ID and keep the current ingredients if none are provided
         updatedRecipe.setId(id);
         if (updatedRecipe.getIngredients() == null) {
             updatedRecipe.setIngredients(existing.getIngredients());
