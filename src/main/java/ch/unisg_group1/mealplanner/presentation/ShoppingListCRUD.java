@@ -12,7 +12,6 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Route;
 import org.vaadin.crudui.crud.impl.GridCrud;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDate;
 
@@ -30,18 +29,14 @@ public class ShoppingListCRUD extends VerticalLayout {
         header.add(VaadinIcon.CART.create());
         header.add(new H2("Shopping Lists"));
 
-        // 1. Controls erstellen
+        // Create controls
         DatePicker startPicker = new DatePicker("From", LocalDate.now());
         DatePicker endPicker = new DatePicker("To", LocalDate.now().plusDays(7));
 
         Button generateBtn = new Button("Generate List", e -> {
             if (startPicker.getValue() != null && endPicker.getValue() != null) {
-                // Generierung im Service anstoßen
                 service.generateShoppingListFromMeals(startPicker.getValue(), endPicker.getValue());
-
-                // DAS WICHTIGSTE: Das Grid anweisen, findAll() vom Listener neu aufzurufen
                 crud.refreshGrid();
-
                 Notification.show("Shopping List Updated!");
             } else {
                 Notification.show("Please choose start and end date!");
@@ -59,7 +54,7 @@ public class ShoppingListCRUD extends VerticalLayout {
         HorizontalLayout controls = new HorizontalLayout(startPicker, endPicker, generateBtn, clearBtn);
         controls.setDefaultVerticalComponentAlignment(Alignment.BASELINE);
 
-        // 2. CRUD Grid
+        // CRUD Grid
         crud.setCrudListener(new ShoppingListCRUDListener(service));
         crud.getGrid().setColumns("name");
         crud.getGrid().addColumn(item ->
@@ -72,10 +67,5 @@ public class ShoppingListCRUD extends VerticalLayout {
 
         add(header, controls, crud);
         setSizeFull();
-    }
-
-    private void generateItems(LocalDate start, LocalDate end) {
-        if (start == null || end == null) return;
-        service.generateShoppingListFromMeals(start, end);
     }
 }

@@ -2,7 +2,6 @@ package ch.unisg_group1.mealplanner.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +24,7 @@ public class Meal {
             joinColumns = @JoinColumn(name = "meal_id"),
             inverseJoinColumns = @JoinColumn(name = "recipe_id")
     )
-    private List<Recipe> recipes = new ArrayList<>(); // Initialisiere die Liste
+    private List<Recipe> recipes = new ArrayList<>(); // Initialize list
 
     @OneToOne(cascade = CascadeType.ALL)
     private MealShoppingList mealShoppingList;

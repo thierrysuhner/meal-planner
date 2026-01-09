@@ -69,7 +69,7 @@ class MealPlannerServiceTests {
         service.updateRecipeCalories(recipe, newPortions);
 
         // Assert
-        // 300 kcal Total / 2 Portions = 150 kcal per portion
+        // 300 kcal Total / 2 portions = 150 kcal per portion
         assertThat(recipe.getCalories()).isEqualTo(150);
     }
 
@@ -81,13 +81,13 @@ class MealPlannerServiceTests {
         Recipe recipe = new Recipe();
         Ingredient ing1 = new Ingredient(); ing1.setCalories(Integer.MAX_VALUE-1);
         Ingredient ing2 = new Ingredient(); ing2.setCalories(1);
-        recipe.setIngredients(List.of(ing1, ing2)); // Total 300 kcal
+        recipe.setIngredients(List.of(ing1, ing2)); // Total max value
 
         // Act
         service.updateRecipeCalories(recipe, newPortions);
 
         // Assert
-        // 2147483647 kcal Total / 2147483647 Portions = 1 kcal per portion
+        // 2147483647 kcal Total / 2147483647 portions = 1 kcal per portion
         assertThat(recipe.getCalories()).isEqualTo(1);
     }
 
@@ -97,7 +97,7 @@ class MealPlannerServiceTests {
         Recipe recipe = new Recipe();
         Ingredient ing1 = new Ingredient(); ing1.setCalories(300);
         Ingredient ing2 = new Ingredient(); ing2.setCalories(200);
-        recipe.setIngredients(List.of(ing1, ing2)); // Total 300 kcal
+        recipe.setIngredients(List.of(ing1, ing2));
 
         // Act + Assert
         assertThrows(IllegalArgumentException.class, ()
@@ -110,7 +110,7 @@ class MealPlannerServiceTests {
         Recipe recipe = new Recipe();
         Ingredient ing1 = new Ingredient(); ing1.setCalories(300);
         Ingredient ing2 = new Ingredient(); ing2.setCalories(200);
-        recipe.setIngredients(List.of(ing1, ing2)); // Total 300 kcal
+        recipe.setIngredients(List.of(ing1, ing2));
 
         // Act + Assert
         assertThrows(IllegalArgumentException.class, ()
@@ -141,7 +141,7 @@ class MealPlannerServiceTests {
         Recipe recipe = new Recipe();
         Ingredient ing1 = new Ingredient(); ing1.setCalories(Integer.MAX_VALUE);
         Ingredient ing2 = new Ingredient(); ing2.setCalories(1);
-        recipe.setIngredients(List.of(ing1, ing2)); // Total 300 kcal
+        recipe.setIngredients(List.of(ing1, ing2)); // Total: Max value + 1 -> overflow
 
         // Act + Assert
         assertThrows(IllegalArgumentException.class, ()

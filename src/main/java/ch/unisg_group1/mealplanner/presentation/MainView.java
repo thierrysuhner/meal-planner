@@ -17,22 +17,20 @@ import com.vaadin.flow.router.RouterLayout;
 
 @Route("")
 public class MainView extends AppLayout implements RouterLayout {
-    private Div content;
 
     public MainView() {
-        // 1. Eigenes Logo einbinden
-        // Der Pfad bezieht sich automatisch auf den "resources" Ordner
+        // Own logo
         Image logo = new Image("images/logo.png", "Meal Planner Logo");
         logo.setHeight("40px"); // Größe an die Navbar anpassen
         logo.getStyle().set("margin-left", "1rem");
 
-        // 2. Titel
+        // Title
         H1 title = new H1("Meal Planner & Grocery Manager");
         title.getStyle().set("font-size", "1.5em")
                 .set("margin", "0")
                 .set("padding-left", "0.5rem");
 
-        // 3. Navbar zusammenbauen
+        // Navbar
         HorizontalLayout header = new HorizontalLayout(new DrawerToggle(), logo, title);
         header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
         header.setWidthFull();
@@ -49,16 +47,16 @@ public class MainView extends AppLayout implements RouterLayout {
 
         // Tab links
         Tab recipeTab = createTab(VaadinIcon.CUTLERY, "Recipes", RecipeCRUD.class);
-        Tab shoppingTab = createTab(VaadinIcon.CART, "Shopping Lists", ShoppingListCRUD.class);
         Tab mealTab = createTab(VaadinIcon.CALENDAR, "Plan Meals", MealPlaner.class);
+        Tab shoppingTab = createTab(VaadinIcon.CART, "Shopping Lists", ShoppingListCRUD.class);
 
-        tabs.add(recipeTab,shoppingTab,mealTab);
+        tabs.add(recipeTab,mealTab,shoppingTab);
         tabs.setSelectedIndex(-1);
         sidebar.add(tabs);
         addToDrawer(sidebar);
 
         // Content container
-        content = new Div();
+        Div content = new Div();
         content.setSizeFull();
         content.getStyle()
                 .set("display", "flex")
@@ -81,11 +79,11 @@ public class MainView extends AppLayout implements RouterLayout {
     private Tab createTab(VaadinIcon icon, String title, Class<? extends Component> viewClass) {
         Icon i = icon.create();
         i.getStyle().set("box-sizing", "border-box")
-                .set("margin-inline-end", "var(--lumo-space-m)") // Abstand zwischen Icon und Text
+                .set("margin-inline-end", "var(--lumo-space-m)")
                 .set("padding", "var(--lumo-space-xs)");
 
         RouterLink link = new RouterLink();
-        link.add(i, new Span(title)); // Icon + Text in den Link packen
+        link.add(i, new Span(title));
         link.setRoute(viewClass);
 
         return new Tab(link);

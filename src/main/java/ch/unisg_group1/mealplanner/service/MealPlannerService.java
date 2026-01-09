@@ -33,7 +33,7 @@ public class MealPlannerService {
     @Transactional
     public Recipe fetchRecipeWithIngredients(Long id) {
         Recipe r = recipeRepo.findById(id).orElseThrow();
-        r.getIngredients().size(); // Trigger für das Laden der Liste
+        r.getIngredients().size(); // Trigger for loading of list
         return r;
     }
 
@@ -43,7 +43,7 @@ public class MealPlannerService {
     public void updateRecipeCalories(Recipe recipe, int portions) {
         // Get ingredients from recipe and sum up their calories
         long totalCaloriesLong = recipe.getIngredients().stream()
-                .mapToLong(Ingredient::getCalories) // long statt int
+                .mapToLong(Ingredient::getCalories)
                 .sum();
 
         // Check if calories are overflowing and then cast them to int

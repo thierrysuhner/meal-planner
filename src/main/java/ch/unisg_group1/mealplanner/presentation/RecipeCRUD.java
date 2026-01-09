@@ -45,10 +45,10 @@ public class RecipeCRUD extends VerticalLayout {
 
         HorizontalLayout header = new HorizontalLayout();
         header.setAlignItems(Alignment.CENTER);
-        header.add(VaadinIcon.CUTLERY.create()); // Passendes Besteck-Icon
+        header.add(VaadinIcon.CUTLERY.create());
         header.add(new H2("Recipes"));
 
-        // 1. GridCrud Konfiguration (Standard Buttons aktiv lassen)
+        // GridCrud configuration
         crud = new GridCrud<>(Recipe.class);
         crud.setCrudListener(new RecipeCRUDListener(service));
         crud.getGrid().setColumns("name", "description", "portions", "calories");
@@ -65,17 +65,15 @@ public class RecipeCRUD extends VerticalLayout {
             );
         });
 
-        // Sicherstellen, dass das Grid die Klicks nicht für Zeilen-Editing reserviert
         crud.getGrid().setSelectionMode(Grid.SelectionMode.SINGLE);
-
         setupEditorView();
-
         add(header, crud, editorContainer);
         setSizeFull();
 
         Hr divider = new Hr();
         add(divider);
 
+        // Recipe finder
         VerticalLayout finderContainer = new VerticalLayout();
         finderContainer.setPadding(true);
         H3 finderTitle = new H3("Recipe Finder");
@@ -87,9 +85,9 @@ public class RecipeCRUD extends VerticalLayout {
         Grid<Recipe> resultGrid = new Grid<>(Recipe.class, false);
         resultGrid.addColumn(Recipe::getName).setHeader("Recipe");
         resultGrid.addColumn(r -> r.getCalories() + " kcal").setHeader("Calories (per portion)");
-        resultGrid.setAllRowsVisible(true); // Das Grid wächst mit der Anzahl der Zeilen
+        resultGrid.setAllRowsVisible(true);
 
-        // 2. Suche triggern
+        // Trigger search
         inventoryPicker.addValueChangeListener(e -> {
             List<Recipe> matches = service.findRecipesMatchingIngredients(e.getValue())
                     .stream()
@@ -98,9 +96,9 @@ public class RecipeCRUD extends VerticalLayout {
             resultGrid.setItems(matches);
         });
 
-        // Die Spalte für fehlende Zutaten
+        // Column for missing ingredients
         resultGrid.addComponentColumn(recipe -> {
-            // 1. Berechne die Liste der fehlenden Zutaten
+            // Get list with missing ingredients
             Set<String> ownedLower = inventoryPicker.getValue().stream()
                     .map(String::toLowerCase)
                     .collect(Collectors.toSet());
@@ -109,13 +107,11 @@ public class RecipeCRUD extends VerticalLayout {
                     .filter(ing -> !ownedLower.contains(ing.getName().toLowerCase()))
                     .toList();
 
-            // 2. Erstelle den Text: "Zutat (Menge Unit), Zutat2 (...)"
             String missingText = missing.stream()
                     .map(ing -> String.format("%s (%.1f %s)",
                             ing.getName(), ing.getAmount(), ing.getUnit()))
                     .collect(Collectors.joining(", "));
 
-            // 3. UI Komponenten zusammenstellen
             VerticalLayout layout = new VerticalLayout();
             layout.setPadding(false);
             layout.setSpacing(false);
@@ -150,11 +146,10 @@ public class RecipeCRUD extends VerticalLayout {
         editorContainer.getStyle().set("background-color", "#f9f9f9");
         editorContainer.getStyle().set("border-top", "2px solid #ddd");
 
-        // Form für Basisdaten
-        recipeName.setReadOnly(true); // Nur zur Info im Detail-View
+        // Name only as info
+        recipeName.setReadOnly(true);
         FormLayout form = new FormLayout(recipeName, portions);
 
-        // Bereich für Zutaten
         ingredientsLayout.setPadding(false);
         ingredientsLayout.setSpacing(false);
 
@@ -206,7 +201,7 @@ public class RecipeCRUD extends VerticalLayout {
         calField.setWidth("6em");
 
         Button delete = new Button(VaadinIcon.TRASH.create(), e -> {
-            ingredientsLayout.remove((HorizontalLayout) name.getParent().get());
+            ingredientsLayout.remove(name.getParent().get());
         });
         delete.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
 
@@ -248,14 +243,13 @@ public class RecipeCRUD extends VerticalLayout {
                 }
             }
 
-            // DER SERVICE-AUFRUF
             Recipe saved = service.updateRecipeDetails(
                     currentRecipe.getId(),
                     portions.getValue(),
                     ingredientsFromUI
             );
 
-            // UI Aktualisierung
+            // Refresh UI
             this.currentRecipe = saved;
             crud.refreshGrid();
             Notification.show("Ingredients for '" + saved.getName() + "' saved successfully!");
@@ -265,7 +259,7 @@ public class RecipeCRUD extends VerticalLayout {
         }
     }
 
-    // Hilfsmethode für die Übersichtlichkeit
+    // Helper method
     private boolean isRowInvalid(HorizontalLayout row) {
         return ((TextField) row.getComponentAt(0)).getValue() == null ||
                 ((NumberField) row.getComponentAt(1)).getValue() == null ||
