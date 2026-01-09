@@ -132,6 +132,7 @@ public class MealPlannerService {
                         item -> {
                             // Create copy to not manipulate original objects in DB
                             ShoppingListItem copy = new ShoppingListItem();
+                            copy.setId(item.getId());
                             copy.setName(item.getName());
                             copy.setUnit(item.getUnit());
                             copy.setTotalAmount(item.getTotalAmount());
@@ -213,6 +214,9 @@ public class MealPlannerService {
 
     @Transactional
     public void deleteShoppingListItem(ShoppingListItem item) { shoppingListRepo.delete(item); }
+
+    @Transactional
+    public void deleteShoppingListItemById(Long id) { shoppingListRepo.deleteById(id); }
 
     @Transactional
     public void clearShoppingList() {

@@ -29,8 +29,16 @@ public class ShoppingListController {
         return service.getAllShoppingListItems();
     }
 
+    @PostMapping("/items")
+    public ShoppingListItem addItem(@RequestBody ShoppingListItem item) {
+        return service.saveShoppingListItem(item);
+    }
+
     @DeleteMapping("/clear")
     public void clearList() {
         service.clearShoppingList();
     }
+
+    @DeleteMapping("/items/{id}")
+    public void deleteItem(@PathVariable Long id) { service.deleteShoppingListItemById(id); }
 }
