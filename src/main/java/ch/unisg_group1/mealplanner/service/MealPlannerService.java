@@ -28,6 +28,16 @@ public class MealPlannerService {
     }
 
     // --- RECIPES ---
+    @Transactional
+    public Recipe addIngredientToRecipe(Recipe recipe, Ingredient ingredient) {
+        if (recipe.getIngredients() == null) {
+            recipe.setIngredients(new ArrayList<>());
+        }
+        recipe.getIngredients().add(ingredient);
+        updateRecipeCalories(recipe, recipe.getPortions());
+        return recipeRepo.save(recipe);
+    }
+
     public List<Recipe> getAllRecipes() { return recipeRepo.findAll(); }
 
     @Transactional
@@ -80,8 +90,30 @@ public class MealPlannerService {
     }
 
     @Transactional
+    public Recipe replaceRecipe(Long id, Recipe newRecipeState) {
+        // Set ID so JPA knows it's an update
+        newRecipeState.setId(id);
+
+        // NULL safety for ingredients
+        if (newRecipeState.getIngredients() == null) {
+            newRecipeState.setIngredients(new ArrayList<>());
+        }
+        updateRecipeCalories(newRecipeState, newRecipeState.getPortions());
+        return recipeRepo.save(newRecipeState);
+    }
+
+    @Transactional
     public void deleteRecipe(Long recipeId) {
         recipeRepo.deleteById(recipeId);
+    }
+
+    @Transactional
+    public Recipe removeIngredientFromRecipe(Recipe recipe, Long ingredientId) {
+        if (recipe.getIngredients() != null) {
+            recipe.getIngredients().removeIf(i -> i.getId() != null && i.getId().equals(ingredientId));
+        }
+        updateRecipeCalories(recipe, recipe.getPortions());
+        return recipeRepo.save(recipe);
     }
 
 

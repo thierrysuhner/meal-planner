@@ -8,7 +8,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -25,7 +24,7 @@ public class RecipeController {
 
     @GetMapping
     public List<Recipe> getAll() {
-        return recipeRepo.findAll();
+        return service.getAllRecipes();
     }
 
 
@@ -42,58 +41,38 @@ public class RecipeController {
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
-        recipeRepo.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
-        recipeRepo.deleteById(id);
+        recipeRepo.findById(id).orElseThrow(()
+                -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
+        service.deleteRecipe(id);
     }
 
     @PostMapping("/{id}/ingredients")
     public Recipe addIngredientToRecipe(@PathVariable Long id, @RequestBody Ingredient ingredient) {
-        Recipe recipe = recipeRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
-
-        if (recipe.getIngredients() == null) {
-            recipe.setIngredients(new ArrayList<>());
-        }
-        recipe.getIngredients().add(ingredient);
-        service.updateRecipeCalories(recipe,recipe.getPortions());
-        return recipeRepo.save(recipe);
+        Recipe recipe = recipeRepo.findById(id).orElseThrow(()
+                -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
+        return service.addIngredientToRecipe(recipe,ingredient);
     }
 
     @GetMapping("/{id}/ingredients")
     public List<Ingredient> getIngredients(@PathVariable Long id) {
-        Recipe recipe = recipeRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
-
+        Recipe recipe = recipeRepo.findById(id).orElseThrow(()
+                -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
         return recipe.getIngredients();
     }
 
     @DeleteMapping("/{id}/ingredients/{ingredientId}")
     public Recipe removeIngredientFromRecipe(@PathVariable Long id, @PathVariable Long ingredientId) {
-        Recipe recipe = recipeRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
-
-        if (recipe.getIngredients() != null) {
-            recipe.getIngredients().removeIf(i -> i.getId() != null && i.getId().equals(ingredientId));
-        }
-        service.updateRecipeCalories(recipe,recipe.getPortions());
-        return recipeRepo.save(recipe);
+        Recipe recipe = recipeRepo.findById(id).orElseThrow(()
+                -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
+        return service.removeIngredientFromRecipe(recipe, ingredientId);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id}") // semantically, PUT always replaces old object
     public Recipe updateRecipe(@PathVariable Long id, @RequestBody Recipe updatedRecipe) {
         // Ensure the recipe exists (otherwise return 404)
-        Recipe existing = recipeRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
+        recipeRepo.findById(id).orElseThrow(()
+                -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
 
-        // Keep the correct ID
-        updatedRecipe.setId(id);
-        // Keep current ingredients if none are provided
-        if (updatedRecipe.getIngredients() == null) updatedRecipe.setIngredients(existing.getIngredients());
-        // Keep current portions if none are specified
-        if (updatedRecipe.getPortions() == 0) updatedRecipe.setPortions(existing.getPortions());
-        // Update calories
-        service.updateRecipeCalories(updatedRecipe, updatedRecipe.getPortions());
-
-        return recipeRepo.save(updatedRecipe);
+        return service.replaceRecipe(id, updatedRecipe);
     }
 }
