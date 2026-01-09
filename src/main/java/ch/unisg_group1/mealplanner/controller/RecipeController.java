@@ -28,9 +28,12 @@ public class RecipeController {
         return recipeRepo.findAll();
     }
 
+
+    // TODO: Fix create to account for calories and save ingredients correctly
     @PostMapping
     public Recipe create(@RequestBody Recipe recipe) {
-        return recipeRepo.save(recipe);
+        Recipe newRecipe = service.saveRecipe(recipe);
+        return service.updateRecipeDetails(newRecipe.getId(), newRecipe.getPortions(), newRecipe.getIngredients());
     }
 
     @PostMapping("/suggest")
@@ -44,6 +47,7 @@ public class RecipeController {
         recipeRepo.deleteById(id);
     }
 
+    // TODO: Fix calorie calculation
     @PostMapping("/{id}/ingredients")
     public Recipe addIngredientToRecipe(@PathVariable Long id, @RequestBody Ingredient ingredient) {
         Recipe recipe = recipeRepo.findById(id)
@@ -64,6 +68,7 @@ public class RecipeController {
         return recipe.getIngredients();
     }
 
+    // TODO: Fix calorie calculation
     @DeleteMapping("/{id}/ingredients/{ingredientId}")
     public Recipe removeIngredientFromRecipe(@PathVariable Long id, @PathVariable Long ingredientId) {
         Recipe recipe = recipeRepo.findById(id)
@@ -76,6 +81,7 @@ public class RecipeController {
         return recipeRepo.save(recipe);
     }
 
+    //TODO: Fix calorie calculation
     @PutMapping("/{id}")
     public Recipe updateRecipe(@PathVariable Long id, @RequestBody Recipe updatedRecipe) {
         // Ensure the recipe exists (otherwise return 404)
