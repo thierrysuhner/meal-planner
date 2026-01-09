@@ -74,4 +74,19 @@ public class RecipeController {
 
         return recipeRepo.save(recipe);
     }
+
+    @PutMapping("/{id}")
+    public Recipe updateRecipe(@PathVariable Long id, @RequestBody Recipe updatedRecipe) {
+        // Ensure the recipe exists (otherwise return 404)
+        Recipe existing = recipeRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
+
+        // Keep the correct ID (and optionally keep the current ingredients if none are provided)
+        updatedRecipe.setId(id);
+        if (updatedRecipe.getIngredients() == null) {
+            updatedRecipe.setIngredients(existing.getIngredients());
+        }
+
+        return recipeRepo.save(updatedRecipe);
+    }
 }

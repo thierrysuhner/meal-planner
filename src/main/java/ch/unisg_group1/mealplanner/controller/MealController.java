@@ -39,4 +39,11 @@ public class MealController {
     public int getCaloriesForDay(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return service.calculateCaloriesForDay(date);
     }
+
+    @PutMapping("/{id}")
+    public Meal updateMeal(@PathVariable Long id, @RequestBody Meal updatedMeal) {
+        updatedMeal.setId(id);
+        return service.saveMeal(updatedMeal);
+    }
+
 }

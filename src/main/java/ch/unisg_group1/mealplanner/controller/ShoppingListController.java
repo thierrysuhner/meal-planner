@@ -41,4 +41,12 @@ public class ShoppingListController {
 
     @DeleteMapping("/items/{id}")
     public void deleteItem(@PathVariable Long id) { service.deleteShoppingListItemById(id); }
+
+    @PutMapping("/items/{id}")
+    public ShoppingListItem updateItem(@PathVariable Long id,
+                                       @RequestBody ShoppingListItem updatedItem) {
+
+        updatedItem.setId(id);
+        return service.saveShoppingListItem(updatedItem);
+    }
 }
