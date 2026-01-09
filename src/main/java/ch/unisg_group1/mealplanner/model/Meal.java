@@ -26,6 +26,6 @@ public class Meal {
     )
     private List<Recipe> recipes = new ArrayList<>(); // Initialize list
 
-    @OneToOne(cascade = CascadeType.ALL)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     private MealShoppingList mealShoppingList;
 }

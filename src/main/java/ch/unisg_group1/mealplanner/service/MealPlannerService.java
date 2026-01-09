@@ -247,6 +247,8 @@ public class MealPlannerService {
 
             // Persist, ShoppingListItems automatically persisted because of CascadeType.ALL
             mealShoppingListRepo.save(mealList);
+            meal.setMealShoppingList(mealList);
+            mealRepo.save(meal);
         }
     }
 
